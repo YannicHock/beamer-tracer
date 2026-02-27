@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Beamer Tracer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="toolbar">
+    <button id="btn-load" title="Bild laden (Ctrl+O)">📂 Bild</button>
+    <div class="separator"></div>
+    <button id="btn-grid" title="Raster ein/aus (G)">📐 Raster</button>
+    <label class="toolbar-input" title="Rasterweite in Pixel">
+      <input type="number" id="input-grid-size" value="50" min="10" max="500" step="10">
+      <span>px</span>
+    </label>
+    <button id="btn-center" title="Mittellinien (C)">✛ Mitte</button>
+    <button id="btn-thirds" title="Drittel-Linien (T)">▦ Drittel</button>
+    <button id="btn-ruler" title="Referenzmaß (R)">📏 Maßstab</button>
+    <div class="separator"></div>
+    <button id="btn-calibrate" title="Maßstab kalibrieren: 2 Punkte klicken">🔧 Kalibrieren</button>
+    <label class="toolbar-input" title="Bekannte Strecke in cm">
+      <input type="number" id="input-calibrate-cm" value="10" min="0.1" step="0.1">
+      <span>cm</span>
+    </label>
+    <div class="separator"></div>
+    <label class="toolbar-label" title="Kontrast">
+      🔆
+      <input type="range" id="slider-contrast" min="50" max="300" value="100" step="5">
+      <span id="contrast-display">100%</span>
+    </label>
+    <label class="toolbar-label" title="Helligkeit">
+      ☀️
+      <input type="range" id="slider-brightness" min="0" max="300" value="100" step="5">
+      <span id="brightness-display">100%</span>
+    </label>
+    <div class="separator"></div>
+    <span id="zoom-display" title="Zoom-Stufe">100%</span>
+    <span id="scale-display" title="Kalibrierter Maßstab"></span>
+  </div>
+  <div id="calibrate-banner" class="hidden">
+    🔧 Kalibrierung: Klicke <strong>2 Punkte</strong> mit bekanntem Abstand auf das Bild.
+    <button id="btn-calibrate-cancel">Abbrechen</button>
+  </div>
+  <div id="viewport">
+    <canvas id="canvas-image"></canvas>
+    <canvas id="canvas-overlay"></canvas>
+  </div>
+  <div id="help-overlay" class="hidden">
+    <div class="help-box">
+      <h2>⌨️ Tastenbelegung</h2>
+      <table>
+        <tr><td>Pfeiltasten</td><td>Pan (5px)</td></tr>
+        <tr><td>Shift + Pfeiltasten</td><td>Fein-Pan (1px)</td></tr>
+        <tr><td>Ctrl + Pfeiltasten</td><td>Grob-Pan (50px)</td></tr>
+        <tr><td>+ / −</td><td>Zoom rein/raus (1%)</td></tr>
+        <tr><td>Mausrad</td><td>Zoom zum Cursor</td></tr>
+        <tr><td>Linke Maus / Mitteltaste</td><td>Bild ziehen</td></tr>
+        <tr><td>G</td><td>Raster</td></tr>
+        <tr><td>C</td><td>Mittellinien</td></tr>
+        <tr><td>T</td><td>Drittel</td></tr>
+        <tr><td>R</td><td>Maßstab</td></tr>
+        <tr><td>0</td><td>Ansicht zurücksetzen</td></tr>
+        <tr><td>Ctrl + O</td><td>Bild laden</td></tr>
+        <tr><td>H / F1</td><td>Diese Hilfe</td></tr>
+      </table>
+      <button id="btn-help-close">Schließen</button>
+    </div>
+  </div>
+  <script src="renderer.js"></script>
+</body>
+</html>
