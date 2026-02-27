@@ -2,6 +2,7 @@
   "name": "beamer-tracer",
   "version": "1.0.0",
   "description": "Portable Foto-Anzeige zum Vorzeichnen mit Beamer",
+  "author": "DFKI",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
