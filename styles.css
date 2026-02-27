@@ -171,3 +171,88 @@ body {
   cursor: pointer;
   font-size: 14px;
 }
+
+/* ── Settings Overlay ──────────────────────────────────────── */
+#settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.settings-box {
+  background: #1e1e1e;
+  color: #ddd;
+  padding: 20px 28px;
+  border-radius: 10px;
+  border: 1px solid #444;
+  min-width: 420px;
+  max-width: 520px;
+}
+.settings-box h2 {
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid #333;
+}
+.settings-row:last-of-type {
+  border-bottom: none;
+}
+.settings-label {
+  width: 100px;
+  font-size: 13px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.settings-row label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #aaa;
+}
+.settings-row input[type="color"] {
+  width: 28px;
+  height: 24px;
+  border: 1px solid #555;
+  border-radius: 3px;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+.settings-row input[type="range"] {
+  width: 70px;
+  accent-color: #0a84ff;
+}
+.style-val {
+  font-family: monospace;
+  font-size: 11px;
+  color: #888;
+  min-width: 32px;
+  text-align: right;
+}
+.settings-box button {
+  margin-top: 14px;
+  margin-right: 8px;
+  padding: 5px 16px;
+  background: #3a3a3a;
+  color: #ddd;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.settings-box button:hover { background: #505050; }
+#btn-settings-close {
+  background: #0a84ff;
+  color: #fff;
+  border-color: #0a84ff;
+}
+#btn-settings-close:hover { background: #2196ff; }

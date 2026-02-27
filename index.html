@@ -10,9 +10,13 @@
     <button id="btn-load" title="Bild laden (Ctrl+O)">📂 Bild</button>
     <div class="separator"></div>
     <button id="btn-grid" title="Raster ein/aus (G)">📐 Raster</button>
-    <label class="toolbar-input" title="Rasterweite in Pixel">
+    <label class="toolbar-input" id="grid-input-px" title="Rasterweite in Pixel">
       <input type="number" id="input-grid-size" value="50" min="10" max="500" step="10">
       <span>px</span>
+    </label>
+    <label class="toolbar-input" id="grid-input-cm" title="Rasterweite in cm" style="display:none">
+      <input type="number" id="input-grid-size-cm" value="5" min="0.5" max="100" step="0.5">
+      <span>cm</span>
     </label>
     <button id="btn-center" title="Mittellinien (C)">✛ Mitte</button>
     <button id="btn-thirds" title="Drittel-Linien (T)">▦ Drittel</button>
@@ -36,6 +40,69 @@
     <div class="separator"></div>
     <span id="zoom-display" title="Zoom-Stufe">100%</span>
     <span id="scale-display" title="Kalibrierter Maßstab"></span>
+    <button id="btn-settings" title="Overlay-Einstellungen">⚙️</button>
+  </div>
+
+  <!-- Overlay-Einstellungen Panel -->
+  <div id="settings-overlay" class="hidden">
+    <div class="settings-box">
+      <h2>⚙️ Overlay-Einstellungen</h2>
+
+      <div class="settings-row">
+        <span class="settings-label">📐 Raster</span>
+        <label title="Farbe"><input type="color" id="style-grid-color" value="#ffffff"></label>
+        <label title="Deckkraft">
+          <input type="range" id="style-grid-opacity" min="0.05" max="1" step="0.05" value="0.18">
+          <span class="style-val" id="style-grid-opacity-val">18%</span>
+        </label>
+        <label title="Dicke">
+          <input type="range" id="style-grid-width" min="0.25" max="5" step="0.25" value="0.5">
+          <span class="style-val" id="style-grid-width-val">0.5</span>
+        </label>
+      </div>
+
+      <div class="settings-row">
+        <span class="settings-label">✛ Mitte</span>
+        <label title="Farbe"><input type="color" id="style-center-color" value="#00ff00"></label>
+        <label title="Deckkraft">
+          <input type="range" id="style-center-opacity" min="0.05" max="1" step="0.05" value="0.6">
+          <span class="style-val" id="style-center-opacity-val">60%</span>
+        </label>
+        <label title="Dicke">
+          <input type="range" id="style-center-width" min="0.25" max="5" step="0.25" value="1">
+          <span class="style-val" id="style-center-width-val">1</span>
+        </label>
+      </div>
+
+      <div class="settings-row">
+        <span class="settings-label">▦ Drittel</span>
+        <label title="Farbe"><input type="color" id="style-thirds-color" value="#0096ff"></label>
+        <label title="Deckkraft">
+          <input type="range" id="style-thirds-opacity" min="0.05" max="1" step="0.05" value="0.5">
+          <span class="style-val" id="style-thirds-opacity-val">50%</span>
+        </label>
+        <label title="Dicke">
+          <input type="range" id="style-thirds-width" min="0.25" max="5" step="0.25" value="1">
+          <span class="style-val" id="style-thirds-width-val">1</span>
+        </label>
+      </div>
+
+      <div class="settings-row">
+        <span class="settings-label">✚ Fadenkreuz</span>
+        <label title="Farbe"><input type="color" id="style-crosshair-color" value="#ffffff"></label>
+        <label title="Deckkraft">
+          <input type="range" id="style-crosshair-opacity" min="0.05" max="1" step="0.05" value="0.45">
+          <span class="style-val" id="style-crosshair-opacity-val">45%</span>
+        </label>
+        <label title="Dicke">
+          <input type="range" id="style-crosshair-width" min="0.25" max="5" step="0.25" value="0.75">
+          <span class="style-val" id="style-crosshair-width-val">0.75</span>
+        </label>
+      </div>
+
+      <button id="btn-settings-reset">↩️ Zurücksetzen</button>
+      <button id="btn-settings-close">Schließen</button>
+    </div>
   </div>
   <div id="calibrate-banner-step1" class="calibrate-banner hidden">
     🔧 <strong>Schritt 1 – Projektionsfläche:</strong> Verschiebe die gelbe 1-Meter-Linie (<strong>Maus ziehen</strong>) und zoome sie (<strong>Mausrad / +−</strong>), bis sie genau der echten 1-Meter-Markierung auf der Wand entspricht.

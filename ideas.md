@@ -33,18 +33,6 @@
 
 ---
 
-
-## 9. 📏 Dynamisches Pixelraster, das sich dem Zoom anpasst
-
-**Problem:** Das aktuelle Raster hat eine feste Pixelweite. Bei starkem Zoom wird es unbrauchbar.
-
-**Verbesserung:** Das Raster soll sich an den Zoom-Level anpassen und in "echten" Einheiten (z.B. cm nach Kalibrierung) gezeichnet werden.
-
-**Prompt:**
-> Verbessere das Raster-Overlay in der Beamer Tracer App so, dass es sich dynamisch dem Zoom anpasst. Wenn eine Kalibrierung existiert, soll das Raster in cm-Einheiten gezeichnet werden (z.B. alle 1 cm, 5 cm, 10 cm – je nach Zoom-Stufe). Das Raster soll sich mit dem Bild mitbewegen (nicht screen-fixed), also relativ zum Bild gezeichnet werden. Zeige am Rand dezente Beschriftungen der Rasterlinien in cm an. Ohne Kalibrierung soll es weiterhin im alten Pixel-Modus funktionieren.
-
----
-
 ## 10. 🖱️ Rechtsklick-Kontextmenü
 
 **Problem:** Alle Funktionen sind nur über Toolbar und Shortcuts zugänglich. Power-User vermissen ein Kontextmenü.

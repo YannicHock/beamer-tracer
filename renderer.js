@@ -29,6 +29,15 @@ let brightness = 100;
 
 let overlays = { grid: false, center: false, thirds: false, ruler: false, crosshair: true };
 let gridSize = 50;
+let gridSizeCm = 5;   // Rasterweite in cm (wenn kalibriert)
+
+// ── Overlay-Stil-Konfiguration ───────────────────────────────
+let overlayStyles = {
+  grid:      { color: '#ffffff', opacity: 0.18, width: 0.5 },
+  center:    { color: '#00ff00', opacity: 0.6,  width: 1   },
+  thirds:    { color: '#0096ff', opacity: 0.5,  width: 1   },
+  crosshair: { color: '#ffffff', opacity: 0.45, width: 0.75 },
+};
 
 // ── Fadenkreuz-Overlay ───────────────────────────────────────
 let crosshairMouseX = -1;   // aktuelle Mausposition (Viewport-relativ)
@@ -61,6 +70,14 @@ const CAL_POINT_RADIUS = 10;   // Klick-Radius zum Greifen eines Punktes
 
 // Legacy (für Ruler-Overlay)
 let calibration = { pxPerCm: null };
+
+// ── Hilfs-Funktion: Hex-Farbe + Opacity → rgba-String ────────
+function hexToRgba(hex, opacity) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
 
 // ── Koordinaten-Umrechnung (Bild ↔ Screen) ──────────────────
 function imgToScreen(imgX, imgY) {
@@ -105,6 +122,14 @@ let refPanStartY  = 0;
     contrast   = saved.contrast   ?? contrast;
     brightness = saved.brightness ?? brightness;
     gridSize   = saved.gridSize   ?? gridSize;
+    gridSizeCm = saved.gridSizeCm ?? gridSizeCm;
+    if (saved.overlayStyles) {
+      for (const key of Object.keys(overlayStyles)) {
+        if (saved.overlayStyles[key]) {
+          overlayStyles[key] = { ...overlayStyles[key], ...saved.overlayStyles[key] };
+        }
+      }
+    }
     if (saved.screenPxPerMeter) screenPxPerMeter = saved.screenPxPerMeter;
     if (saved.pxPerCm) calibration.pxPerCm = saved.pxPerCm;
     if (saved.calibratedZoom != null) {
@@ -121,6 +146,8 @@ let refPanStartY  = 0;
 
     // UI-Elemente synchronisieren
     document.getElementById('input-grid-size').value = gridSize;
+    document.getElementById('input-grid-size-cm').value = gridSizeCm;
+    updateGridInputVisibility();
     document.getElementById('slider-contrast').value = contrast;
     document.getElementById('slider-brightness').value = brightness;
     contrastDisp.textContent = `${contrast}%`;
@@ -133,7 +160,8 @@ let refPanStartY  = 0;
 
 function saveState() {
   const data = {
-    zoom, panX, panY, contrast, brightness, gridSize,
+    zoom, panX, panY, contrast, brightness, gridSize, gridSizeCm,
+    overlayStyles,
     screenPxPerMeter,
     pxPerCm: calibration.pxPerCm,
     calibratedZoom, calibratedPanX, calibratedPanY,
@@ -229,37 +257,36 @@ function renderOverlay() {
   const h = canvasOverlay.height;
   ctxOvl.clearRect(0, 0, w, h);
 
-  // ── Standard-Overlays ──
+  // ── Bild-Bounding-Box (Screen-Koordinaten) ──
+  const imgX0 = img ? panX : 0;
+  const imgY0 = img ? panY : 0;
+  const imgW  = img ? img.width  * zoom : w;
+  const imgH  = img ? img.height * zoom : h;
+
+  // ── Standard-Overlays (relativ zum Bild) ──
   if (overlays.grid) {
-    ctxOvl.strokeStyle = 'rgba(255, 0, 0, 0.35)';
-    ctxOvl.lineWidth = 0.5;
-    ctxOvl.beginPath();
-    for (let x = 0; x < w; x += gridSize) {
-      ctxOvl.moveTo(x, 0); ctxOvl.lineTo(x, h);
-    }
-    for (let y = 0; y < h; y += gridSize) {
-      ctxOvl.moveTo(0, y); ctxOvl.lineTo(w, y);
-    }
-    ctxOvl.stroke();
+    drawGrid(w, h, imgX0, imgY0, imgW, imgH);
   }
 
   if (overlays.center) {
-    ctxOvl.strokeStyle = 'rgba(0, 255, 0, 0.6)';
-    ctxOvl.lineWidth = 1;
+    const cs = overlayStyles.center;
+    ctxOvl.strokeStyle = hexToRgba(cs.color, cs.opacity);
+    ctxOvl.lineWidth = cs.width;
     ctxOvl.beginPath();
-    ctxOvl.moveTo(w / 2, 0); ctxOvl.lineTo(w / 2, h);
-    ctxOvl.moveTo(0, h / 2); ctxOvl.lineTo(w, h / 2);
+    ctxOvl.moveTo(imgX0 + imgW / 2, imgY0); ctxOvl.lineTo(imgX0 + imgW / 2, imgY0 + imgH);
+    ctxOvl.moveTo(imgX0, imgY0 + imgH / 2); ctxOvl.lineTo(imgX0 + imgW, imgY0 + imgH / 2);
     ctxOvl.stroke();
   }
 
   if (overlays.thirds) {
-    ctxOvl.strokeStyle = 'rgba(0, 150, 255, 0.5)';
-    ctxOvl.lineWidth = 1;
+    const ts = overlayStyles.thirds;
+    ctxOvl.strokeStyle = hexToRgba(ts.color, ts.opacity);
+    ctxOvl.lineWidth = ts.width;
     ctxOvl.setLineDash([10, 5]);
     ctxOvl.beginPath();
     for (let i = 1; i <= 2; i++) {
-      ctxOvl.moveTo((w / 3) * i, 0); ctxOvl.lineTo((w / 3) * i, h);
-      ctxOvl.moveTo(0, (h / 3) * i); ctxOvl.lineTo(w, (h / 3) * i);
+      ctxOvl.moveTo(imgX0 + (imgW / 3) * i, imgY0); ctxOvl.lineTo(imgX0 + (imgW / 3) * i, imgY0 + imgH);
+      ctxOvl.moveTo(imgX0, imgY0 + (imgH / 3) * i); ctxOvl.lineTo(imgX0 + imgW, imgY0 + (imgH / 3) * i);
     }
     ctxOvl.stroke();
     ctxOvl.setLineDash([]);
@@ -345,6 +372,111 @@ function renderOverlay() {
   if (overlays.crosshair && crosshairMouseX >= 0 && crosshairMouseY >= 0) {
     drawCrosshair(w, h);
   }
+}
+
+// ── Raster zeichnen ──────────────────────────────────────────
+function drawGrid(w, h, imgX0, imgY0, imgW, imgH) {
+  const hasCal = calibration.pxPerCm != null && calibration.pxPerCm > 0;
+
+  // Bestimme den Rasterabstand in Screen-Pixeln
+  let stepScreen;
+  let labelStep;  // Schrittwert in der Beschriftungseinheit
+
+  if (hasCal) {
+    // Kalibriert: gridSizeCm in cm → Bild-Pixel → Screen-Pixel
+    const stepImgPx = gridSizeCm * calibration.pxPerCm;
+    stepScreen = stepImgPx * zoom;
+    labelStep = gridSizeCm;
+  } else {
+    // Unkalibriert: gridSize ist direkt in Bild-Pixeln
+    stepScreen = gridSize * zoom;
+    labelStep = gridSize;
+  }
+
+  // Mindestabstand: wenn Rasterlinien < 5px Abstand haben, überspringen
+  if (stepScreen < 5) return;
+
+  ctxOvl.save();
+  const gs = overlayStyles.grid;
+  ctxOvl.strokeStyle = hexToRgba(gs.color, gs.opacity);
+  ctxOvl.lineWidth = gs.width;
+
+  // Clipping auf den sichtbaren Bereich des Canvas
+  const visLeft   = Math.max(0, imgX0);
+  const visTop    = Math.max(0, imgY0);
+  const visRight  = Math.min(w, imgX0 + imgW);
+  const visBottom = Math.min(h, imgY0 + imgH);
+
+  if (visRight <= visLeft || visBottom <= visTop) {
+    ctxOvl.restore();
+    return;
+  }
+
+  // Bestimme den Index der ersten/letzten sichtbaren Linie
+  // Vertikale Linien (x)
+  const firstIdxX = Math.ceil((visLeft - imgX0) / stepScreen);
+  const lastIdxX  = Math.floor((visRight - imgX0) / stepScreen);
+
+  // Horizontale Linien (y)
+  const firstIdxY = Math.ceil((visTop - imgY0) / stepScreen);
+  const lastIdxY  = Math.floor((visBottom - imgY0) / stepScreen);
+
+  // Vertikale Rasterlinien
+  ctxOvl.beginPath();
+  for (let i = firstIdxX; i <= lastIdxX; i++) {
+    const x = imgX0 + i * stepScreen;
+    ctxOvl.moveTo(x, visTop);
+    ctxOvl.lineTo(x, visBottom);
+  }
+  ctxOvl.stroke();
+
+  // Horizontale Rasterlinien
+  ctxOvl.beginPath();
+  for (let j = firstIdxY; j <= lastIdxY; j++) {
+    const y = imgY0 + j * stepScreen;
+    ctxOvl.moveTo(visLeft, y);
+    ctxOvl.lineTo(visRight, y);
+  }
+  ctxOvl.stroke();
+
+  // ── Beschriftungen am Rand (nur wenn kalibriert) ──
+  if (hasCal) {
+    const labelOpacity = Math.min(1, gs.opacity + 0.25);
+    ctxOvl.font = '10px monospace';
+    ctxOvl.fillStyle = hexToRgba(gs.color, labelOpacity);
+    ctxOvl.textBaseline = 'bottom';
+
+    // Vertikale Linien → Beschriftung oben
+    for (let i = firstIdxX; i <= lastIdxX; i++) {
+      if (i === 0) continue;  // Ursprung überspringen
+      const x = imgX0 + i * stepScreen;
+      const labelVal = (i * labelStep).toFixed(labelStep % 1 === 0 ? 0 : 1);
+      ctxOvl.textAlign = 'center';
+      const labelY = Math.max(visTop + 12, imgY0 + 12);
+      ctxOvl.fillText(`${labelVal}`, x, labelY);
+    }
+
+    // Horizontale Linien → Beschriftung links
+    ctxOvl.textAlign = 'left';
+    ctxOvl.textBaseline = 'middle';
+    for (let j = firstIdxY; j <= lastIdxY; j++) {
+      if (j === 0) continue;
+      const y = imgY0 + j * stepScreen;
+      const labelVal = (j * labelStep).toFixed(labelStep % 1 === 0 ? 0 : 1);
+      const labelX = Math.max(visLeft + 3, imgX0 + 3);
+      ctxOvl.fillText(`${labelVal}`, labelX, y);
+    }
+
+    // Einheiten-Beschriftung am Ursprung
+    if (imgX0 >= 0 && imgX0 < w && imgY0 >= 0 && imgY0 < h) {
+      ctxOvl.textAlign = 'left';
+      ctxOvl.textBaseline = 'top';
+      ctxOvl.fillStyle = hexToRgba(gs.color, Math.min(1, gs.opacity + 0.2));
+      ctxOvl.fillText('cm', imgX0 + 3, imgY0 + 3);
+    }
+  }
+
+  ctxOvl.restore();
 }
 
 // ── Referenzlinie zeichnen (Schritt 1) ───────────────────────
@@ -448,8 +580,9 @@ function drawCrosshair(w, h) {
   ctxOvl.save();
 
   // Gestrichelte halbtransparente Linien
-  ctxOvl.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-  ctxOvl.lineWidth = 0.75;
+  const chs = overlayStyles.crosshair;
+  ctxOvl.strokeStyle = hexToRgba(chs.color, chs.opacity);
+  ctxOvl.lineWidth = chs.width;
   ctxOvl.setLineDash([6, 4]);
 
   // Horizontale Linie
@@ -843,11 +976,27 @@ document.getElementById('btn-crosshair').addEventListener('click', () => {
 });
 
 // ── Rasterweite konfigurieren ────────────────────────────────
+function updateGridInputVisibility() {
+  const hasCal = calibration.pxPerCm != null;
+  document.getElementById('grid-input-px').style.display = hasCal ? 'none' : 'flex';
+  document.getElementById('grid-input-cm').style.display = hasCal ? 'flex' : 'none';
+}
+
 document.getElementById('input-grid-size').value = gridSize;
 document.getElementById('input-grid-size').addEventListener('input', (e) => {
   const val = parseInt(e.target.value, 10);
   if (val >= 5) {
     gridSize = val;
+    render();
+    saveState();
+  }
+});
+
+document.getElementById('input-grid-size-cm').value = gridSizeCm;
+document.getElementById('input-grid-size-cm').addEventListener('input', (e) => {
+  const val = parseFloat(e.target.value);
+  if (val >= 0.5) {
+    gridSizeCm = val;
     render();
     saveState();
   }
@@ -899,6 +1048,7 @@ document.getElementById('btn-recalibrate').addEventListener('click', () => {
   calibration.pxPerCm = null;
   screenPxPerMeter = null;
   updateCalibrationButtons();
+  updateGridInputVisibility();
   saveState();
   startCalibration();
 });
@@ -1006,6 +1156,7 @@ function applyCalibrationStep2() {
     calibratedPanY = panY;
 
     updateCalibrationButtons();
+    updateGridInputVisibility();
     saveState();
   }
 
@@ -1017,6 +1168,83 @@ document.getElementById('btn-help-close').addEventListener('click', () => {
   document.getElementById('help-overlay').classList.add('hidden');
 });
 
+// ══════════════════════════════════════════════════════════════
+//  OVERLAY-EINSTELLUNGEN
+// ══════════════════════════════════════════════════════════════
+
+const OVERLAY_KEYS = ['grid', 'center', 'thirds', 'crosshair'];
+
+const defaultOverlayStyles = {
+  grid:      { color: '#ffffff', opacity: 0.18, width: 0.5 },
+  center:    { color: '#00ff00', opacity: 0.6,  width: 1   },
+  thirds:    { color: '#0096ff', opacity: 0.5,  width: 1   },
+  crosshair: { color: '#ffffff', opacity: 0.45, width: 0.75 },
+};
+
+/** Sync alle Settings-UI-Elemente mit dem aktuellen overlayStyles-Objekt */
+function syncSettingsUI() {
+  for (const key of OVERLAY_KEYS) {
+    const s = overlayStyles[key];
+    document.getElementById(`style-${key}-color`).value   = s.color;
+    document.getElementById(`style-${key}-opacity`).value  = s.opacity;
+    document.getElementById(`style-${key}-width`).value    = s.width;
+    document.getElementById(`style-${key}-opacity-val`).textContent = `${Math.round(s.opacity * 100)}%`;
+    document.getElementById(`style-${key}-width-val`).textContent   = s.width.toFixed(s.width % 1 === 0 ? 0 : 2);
+  }
+}
+
+// Einstellungen öffnen / schließen
+document.getElementById('btn-settings').addEventListener('click', () => {
+  syncSettingsUI();
+  document.getElementById('settings-overlay').classList.remove('hidden');
+});
+document.getElementById('btn-settings-close').addEventListener('click', () => {
+  document.getElementById('settings-overlay').classList.add('hidden');
+});
+// Klick auf Backdrop schließt
+document.getElementById('settings-overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) {
+    document.getElementById('settings-overlay').classList.add('hidden');
+  }
+});
+
+// Zurücksetzen
+document.getElementById('btn-settings-reset').addEventListener('click', () => {
+  for (const key of OVERLAY_KEYS) {
+    overlayStyles[key] = { ...defaultOverlayStyles[key] };
+  }
+  syncSettingsUI();
+  render();
+  saveState();
+});
+
+// Event-Listener für alle Einstellungs-Inputs registrieren
+for (const key of OVERLAY_KEYS) {
+  // Farbe
+  document.getElementById(`style-${key}-color`).addEventListener('input', (e) => {
+    overlayStyles[key].color = e.target.value;
+    render();
+    saveState();
+  });
+  // Deckkraft
+  document.getElementById(`style-${key}-opacity`).addEventListener('input', (e) => {
+    overlayStyles[key].opacity = parseFloat(e.target.value);
+    document.getElementById(`style-${key}-opacity-val`).textContent = `${Math.round(overlayStyles[key].opacity * 100)}%`;
+    render();
+    saveState();
+  });
+  // Linienstärke
+  document.getElementById(`style-${key}-width`).addEventListener('input', (e) => {
+    overlayStyles[key].width = parseFloat(e.target.value);
+    const w = overlayStyles[key].width;
+    document.getElementById(`style-${key}-width-val`).textContent = w.toFixed(w % 1 === 0 ? 0 : 2);
+    render();
+    saveState();
+  });
+}
+
 // ── Init ─────────────────────────────────────────────────────
 resizeCanvases();
 updateCalibrationButtons();
+updateGridInputVisibility();
+syncSettingsUI();
