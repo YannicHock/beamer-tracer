@@ -62,6 +62,14 @@ const CAL_POINT_RADIUS = 10;   // Klick-Radius zum Greifen eines Punktes
 // Legacy (für Ruler-Overlay)
 let calibration = { pxPerCm: null };
 
+// ── Koordinaten-Umrechnung (Bild ↔ Screen) ──────────────────
+function imgToScreen(imgX, imgY) {
+  return { x: imgX * zoom + panX, y: imgY * zoom + panY };
+}
+function screenToImg(sx, sy) {
+  return { x: (sx - panX) / zoom, y: (sy - panY) / zoom };
+}
+
 // Drag
 let dragging   = false;
 let dragStartX = 0;
@@ -270,16 +278,19 @@ function renderOverlay() {
   if (calibrateStep === 2 && calibratePoints.length > 0) {
     ctxOvl.lineWidth = 2;
 
+    // Punkte in Screen-Koordinaten umrechnen
+    const screenPts = calibratePoints.map(pt => imgToScreen(pt.imgX, pt.imgY));
+
     // Hilfslinie zwischen den Punkten (auch während Drag)
-    if (calibratePoints.length === 2) {
+    if (screenPts.length === 2) {
       // Gestrichelte Hilfslinie
       ctxOvl.save();
       ctxOvl.strokeStyle = 'rgba(255, 255, 0, 0.6)';
       ctxOvl.setLineDash([8, 6]);
       ctxOvl.lineWidth = 1.5;
       ctxOvl.beginPath();
-      ctxOvl.moveTo(calibratePoints[0].x, calibratePoints[0].y);
-      ctxOvl.lineTo(calibratePoints[1].x, calibratePoints[1].y);
+      ctxOvl.moveTo(screenPts[0].x, screenPts[0].y);
+      ctxOvl.lineTo(screenPts[1].x, screenPts[1].y);
       ctxOvl.stroke();
       ctxOvl.setLineDash([]);
       ctxOvl.restore();
@@ -288,24 +299,24 @@ function renderOverlay() {
       ctxOvl.strokeStyle = 'rgba(255, 100, 0, 0.9)';
       ctxOvl.lineWidth = 2;
       ctxOvl.beginPath();
-      ctxOvl.moveTo(calibratePoints[0].x, calibratePoints[0].y);
-      ctxOvl.lineTo(calibratePoints[1].x, calibratePoints[1].y);
+      ctxOvl.moveTo(screenPts[0].x, screenPts[0].y);
+      ctxOvl.lineTo(screenPts[1].x, screenPts[1].y);
       ctxOvl.stroke();
 
       // Pixel-Distanz auf dem Screen anzeigen
-      const dx = calibratePoints[1].x - calibratePoints[0].x;
-      const dy = calibratePoints[1].y - calibratePoints[0].y;
+      const dx = screenPts[1].x - screenPts[0].x;
+      const dy = screenPts[1].y - screenPts[0].y;
       const screenDist = Math.sqrt(dx * dx + dy * dy);
-      const midX = (calibratePoints[0].x + calibratePoints[1].x) / 2;
-      const midY = (calibratePoints[0].y + calibratePoints[1].y) / 2;
+      const midX = (screenPts[0].x + screenPts[1].x) / 2;
+      const midY = (screenPts[0].y + screenPts[1].y) / 2;
       ctxOvl.font = '13px monospace';
       ctxOvl.fillStyle = 'rgba(255, 100, 0, 0.9)';
       ctxOvl.fillText(`${Math.round(screenDist)} px`, midX + 8, midY - 8);
     }
 
     // Punkte zeichnen
-    for (let i = 0; i < calibratePoints.length; i++) {
-      const pt = calibratePoints[i];
+    for (let i = 0; i < screenPts.length; i++) {
+      const pt = screenPts[i];
       const isSelected = (i === calPointSelected);
 
       // Ausgewählter Punkt: größerer Ring
@@ -553,11 +564,24 @@ viewport.addEventListener('mousedown', (e) => {
     const mx   = e.clientX - rect.left;
     const my   = e.clientY - rect.top;
 
-    // Prüfe ob ein existierender Punkt angeklickt wurde
+    // Mittlere Maustaste → immer Pan erlauben (auch während Kalibrierung)
+    if (e.button === 1) {
+      dragging   = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      panStartX  = panX;
+      panStartY  = panY;
+      viewport.classList.add('dragging');
+      e.preventDefault();
+      return;
+    }
+
+    // Prüfe ob ein existierender Punkt angeklickt wurde (Bild→Screen für Hit-Test)
     let hitIdx = -1;
     for (let i = 0; i < calibratePoints.length; i++) {
-      const dx = calibratePoints[i].x - mx;
-      const dy = calibratePoints[i].y - my;
+      const sp = imgToScreen(calibratePoints[i].imgX, calibratePoints[i].imgY);
+      const dx = sp.x - mx;
+      const dy = sp.y - my;
       if (Math.sqrt(dx * dx + dy * dy) <= CAL_POINT_RADIUS) {
         hitIdx = i;
         break;
@@ -574,20 +598,19 @@ viewport.addEventListener('mousedown', (e) => {
       return;
     }
 
-    // Neuen Punkt setzen (max 2)
+    // Neuen Punkt setzen (max 2) – in Bild-Koordinaten speichern
     if (calibratePoints.length < 2) {
-      let px = mx;
-      let py = my;
-      // Shift: horizontal/vertikal einrasten am ersten Punkt
+      let imgPt = screenToImg(mx, my);
+      // Shift: horizontal/vertikal einrasten am ersten Punkt (in Bild-Koordinaten)
       if (e.shiftKey && calibratePoints.length === 1) {
         const ref = calibratePoints[0];
-        if (Math.abs(mx - ref.x) > Math.abs(my - ref.y)) {
-          py = ref.y;  // horizontal
+        if (Math.abs(imgPt.x - ref.imgX) > Math.abs(imgPt.y - ref.imgY)) {
+          imgPt.y = ref.imgY;  // horizontal
         } else {
-          px = ref.x;  // vertikal
+          imgPt.x = ref.imgX;  // vertikal
         }
       }
-      calibratePoints.push({ x: px, y: py });
+      calibratePoints.push({ imgX: imgPt.x, imgY: imgPt.y });
       calPointSelected = calibratePoints.length - 1;
       // Enable confirm button when 2 points are set
       if (calibratePoints.length === 2) {
@@ -595,8 +618,15 @@ viewport.addEventListener('mousedown', (e) => {
       }
       render();
     } else {
-      // Beide Punkte schon gesetzt, Klick ins Leere → deselektieren
+      // Beide Punkte schon gesetzt, Klick ins Leere → deselektieren oder Pan starten
       calPointSelected = -1;
+      // Bild-Pan im Schritt 2 erlauben
+      dragging   = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      panStartX  = panX;
+      panStartY  = panY;
+      viewport.classList.add('dragging');
       render();
     }
     e.preventDefault();
@@ -633,19 +663,22 @@ window.addEventListener('mousemove', (e) => {
     let mx = e.clientX - rect.left;
     let my = e.clientY - rect.top;
 
-    // Shift: horizontal/vertikal einrasten am jeweils anderen Punkt
+    // In Bild-Koordinaten umrechnen
+    let imgPt = screenToImg(mx, my);
+
+    // Shift: horizontal/vertikal einrasten am jeweils anderen Punkt (in Bild-Koordinaten)
     if (e.shiftKey && calibratePoints.length === 2) {
       const otherIdx = calPointDragging === 0 ? 1 : 0;
       const ref = calibratePoints[otherIdx];
-      if (Math.abs(mx - ref.x) > Math.abs(my - ref.y)) {
-        my = ref.y;  // horizontal
+      if (Math.abs(imgPt.x - ref.imgX) > Math.abs(imgPt.y - ref.imgY)) {
+        imgPt.y = ref.imgY;  // horizontal
       } else {
-        mx = ref.x;  // vertikal
+        imgPt.x = ref.imgX;  // vertikal
       }
     }
 
-    calibratePoints[calPointDragging].x = mx;
-    calibratePoints[calPointDragging].y = my;
+    calibratePoints[calPointDragging].imgX = imgPt.x;
+    calibratePoints[calPointDragging].imgY = imgPt.y;
     render();
     return;
   }
@@ -718,7 +751,7 @@ document.addEventListener('keydown', (e) => {
       render();
       return;
     }
-    return;
+    // Zoom und Pan in Schritt 2 durchlassen (nicht return)
   }
 
   let step = PAN_NORMAL;
@@ -941,9 +974,9 @@ function applyCalibrationStep2() {
 
   const [p1, p2] = calibratePoints;
 
-  // Abstand in Bild-Pixeln (ohne Zoom)
-  const dxImg = (p2.x - p1.x) / zoom;
-  const dyImg = (p2.y - p1.y) / zoom;
+  // Abstand in Bild-Pixeln (direkt aus Bild-Koordinaten)
+  const dxImg = p2.imgX - p1.imgX;
+  const dyImg = p2.imgY - p1.imgY;
   const distImgPx = Math.sqrt(dxImg * dxImg + dyImg * dyImg);
 
   const knownCm = parseFloat(document.getElementById('input-calibrate-cm').value);
@@ -959,11 +992,9 @@ function applyCalibrationStep2() {
     // pxPerCm für Ruler (bei Zoom=1 im Bild)
     calibration.pxPerCm = distImgPx / knownCm;
 
-    // Zoom anwenden: Zentriert auf die Mitte der beiden Punkte
-    const centerScreenX = (p1.x + p2.x) / 2;
-    const centerScreenY = (p1.y + p2.y) / 2;
-    const imgCenterX = (centerScreenX - panX) / zoom;
-    const imgCenterY = (centerScreenY - panY) / zoom;
+    // Zoom anwenden: Zentriert auf die Mitte der beiden Punkte (in Bild-Koordinaten)
+    const imgCenterX = (p1.imgX + p2.imgX) / 2;
+    const imgCenterY = (p1.imgY + p2.imgY) / 2;
 
     zoom = newZoom;
     panX = canvasImage.width  / 2 - imgCenterX * zoom;
