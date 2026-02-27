@@ -17,7 +17,8 @@
       "artifactName": "BeamerTracer-Portable.exe"
     },
     "win": {
-      "target": "portable"
+      "target": "portable",
+      "signAndEditExecutable": false
     },
     "mac": {
       "target": "dmg"
