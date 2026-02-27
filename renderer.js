@@ -27,8 +27,12 @@ const ZOOM_STEP  = 0.01;
 let contrast   = 100;
 let brightness = 100;
 
-let overlays = { grid: false, center: false, thirds: false, ruler: false };
+let overlays = { grid: false, center: false, thirds: false, ruler: false, crosshair: true };
 let gridSize = 50;
+
+// ── Fadenkreuz-Overlay ───────────────────────────────────────
+let crosshairMouseX = -1;   // aktuelle Mausposition (Viewport-relativ)
+let crosshairMouseY = -1;
 
 // ── Kalibrierung ─────────────────────────────────────────────
 // Schritt 1: Referenzlinie (1 m) auf Overlay – eigene Position & Zoom
@@ -325,6 +329,11 @@ function renderOverlay() {
       ctxOvl.fillText(`P${i + 1}`, pt.x + 10, pt.y - 10);
     }
   }
+
+  // ── Fadenkreuz-Overlay ──
+  if (overlays.crosshair && crosshairMouseX >= 0 && crosshairMouseY >= 0) {
+    drawCrosshair(w, h);
+  }
 }
 
 // ── Referenzlinie zeichnen (Schritt 1) ───────────────────────
@@ -419,6 +428,90 @@ function drawRuler() {
     scaleDisplay.textContent = '';
   }
 }
+
+// ── Fadenkreuz zeichnen ──────────────────────────────────────
+function drawCrosshair(w, h) {
+  const mx = crosshairMouseX;
+  const my = crosshairMouseY;
+
+  ctxOvl.save();
+
+  // Gestrichelte halbtransparente Linien
+  ctxOvl.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+  ctxOvl.lineWidth = 0.75;
+  ctxOvl.setLineDash([6, 4]);
+
+  // Horizontale Linie
+  ctxOvl.beginPath();
+  ctxOvl.moveTo(0, my);
+  ctxOvl.lineTo(w, my);
+  ctxOvl.stroke();
+
+  // Vertikale Linie
+  ctxOvl.beginPath();
+  ctxOvl.moveTo(mx, 0);
+  ctxOvl.lineTo(mx, h);
+  ctxOvl.stroke();
+
+  ctxOvl.setLineDash([]);
+
+  // ── Koordinaten-Anzeige neben dem Cursor ──
+  if (img) {
+    // Bild-Pixel berechnen (inverse Transformation)
+    const imgPxX = (mx - panX) / zoom;
+    const imgPxY = (my - panY) / zoom;
+
+    // Prüfen ob innerhalb des Bildes
+    const insideImage = imgPxX >= 0 && imgPxX < img.width && imgPxY >= 0 && imgPxY < img.height;
+
+    let label = `${Math.round(imgPxX)}, ${Math.round(imgPxY)} px`;
+    if (calibration.pxPerCm && calibration.pxPerCm > 0) {
+      const cmX = (imgPxX / calibration.pxPerCm).toFixed(1);
+      const cmY = (imgPxY / calibration.pxPerCm).toFixed(1);
+      label += `  (${cmX}, ${cmY} cm)`;
+    }
+
+    // Position: rechts-unterhalb vom Cursor, mit Padding
+    const offsetX = 14;
+    const offsetY = 20;
+    let labelX = mx + offsetX;
+    let labelY = my + offsetY;
+
+    // Textgröße messen für Hintergrundbox
+    ctxOvl.font = '12px monospace';
+    const tm = ctxOvl.measureText(label);
+    const textW = tm.width + 8;
+    const textH = 18;
+
+    // Am Rand umklappen, damit Label nicht aus dem Canvas ragt
+    if (labelX + textW > w) labelX = mx - offsetX - textW;
+    if (labelY + textH > h) labelY = my - offsetY - textH;
+
+    // Halbtransparenter Hintergrund
+    ctxOvl.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctxOvl.fillRect(labelX - 2, labelY - 13, textW, textH);
+
+    // Textfarbe: weiß wenn im Bild, grau wenn außerhalb
+    ctxOvl.fillStyle = insideImage ? 'rgba(255, 255, 255, 0.9)' : 'rgba(150, 150, 150, 0.7)';
+    ctxOvl.fillText(label, labelX + 2, labelY);
+  }
+
+  ctxOvl.restore();
+}
+
+// ── Mausbewegung für Fadenkreuz ──────────────────────────────
+viewport.addEventListener('mousemove', (e) => {
+  const rect = viewport.getBoundingClientRect();
+  crosshairMouseX = e.clientX - rect.left;
+  crosshairMouseY = e.clientY - rect.top;
+  if (overlays.crosshair) renderOverlay();
+});
+
+viewport.addEventListener('mouseleave', () => {
+  crosshairMouseX = -1;
+  crosshairMouseY = -1;
+  if (overlays.crosshair) renderOverlay();
+});
 
 // ── Zoom zum Mauszeiger ──────────────────────────────────────
 function zoomAtPoint(mouseX, mouseY, zoomDelta) {
@@ -674,6 +767,7 @@ document.addEventListener('keydown', (e) => {
     case 'c': case 'C': toggleOverlay('center',  'btn-center');  break;
     case 't': case 'T': toggleOverlay('thirds',  'btn-thirds');  break;
     case 'r': case 'R': toggleOverlay('ruler',   'btn-ruler');   break;
+    case 'x': case 'X': toggleOverlay('crosshair', 'btn-crosshair'); break;
     case 'h': case 'H': case 'F1':
       document.getElementById('help-overlay').classList.toggle('hidden');
       break;
@@ -710,6 +804,9 @@ document.getElementById('btn-thirds').addEventListener('click', () => {
 });
 document.getElementById('btn-ruler').addEventListener('click', () => {
   toggleOverlay('ruler', 'btn-ruler'); render();
+});
+document.getElementById('btn-crosshair').addEventListener('click', () => {
+  toggleOverlay('crosshair', 'btn-crosshair'); render();
 });
 
 // ── Rasterweite konfigurieren ────────────────────────────────
