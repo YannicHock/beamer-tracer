@@ -94,6 +94,9 @@ export function initContextMenu() {
       case 'help':
         document.getElementById('help-overlay').classList.toggle('hidden');
         break;
+      case 'tour':
+        startTour();
+        break;
     }
   });
 

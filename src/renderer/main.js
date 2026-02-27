@@ -13,6 +13,7 @@ import { initOverlayButtons } from './features/overlays/overlays.js';
 import { initDragDrop } from './events/dragdrop.js';
 import { initMouse } from './events/mouse.js';
 import { initKeyboard } from './events/keyboard.js';
+import { initTour } from './features/tour/tour.js';
 
 // ── Bootstrap ────────────────────────────────────────────────
 async function init() {
@@ -27,6 +28,7 @@ async function init() {
     initSettings();
     initFullscreen();
     initContextMenu();
+    initTour();
     await restoreState();
     resizeCanvases();
     updateCalibrationButtons();
