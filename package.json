@@ -1,0 +1,36 @@
+{
+  "name": "beamer-tracer",
+  "version": "1.0.0",
+  "description": "Portable Foto-Anzeige zum Vorzeichnen mit Beamer",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win portable",
+    "build:mac": "electron-builder --mac dmg"
+  },
+  "build": {
+    "appId": "com.beamer.tracer",
+    "productName": "BeamerTracer",
+    "portable": {
+      "artifactName": "BeamerTracer-Portable.exe"
+    },
+    "win": {
+      "target": "portable"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "renderer.js",
+      "styles.css",
+      "assets/**/*"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^34.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
