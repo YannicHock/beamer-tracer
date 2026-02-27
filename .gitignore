@@ -4,3 +4,5 @@ dist/
 Thumbs.db
 *.log
 package-lock.json
+/.idea/
+/beamer-tracer-config.json

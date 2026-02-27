@@ -18,11 +18,9 @@
     <button id="btn-thirds" title="Drittel-Linien (T)">▦ Drittel</button>
     <button id="btn-ruler" title="Referenzmaß (R)">📏 Maßstab</button>
     <div class="separator"></div>
-    <button id="btn-calibrate" title="Maßstab kalibrieren: 2 Punkte klicken">🔧 Kalibrieren</button>
-    <label class="toolbar-input" title="Bekannte Strecke in cm">
-      <input type="number" id="input-calibrate-cm" value="10" min="0.1" step="0.1">
-      <span>cm</span>
-    </label>
+    <button id="btn-calibrate" title="Kalibrierung starten">🔧 Kalibrieren</button>
+    <button id="btn-restore-zoom" class="hidden" title="Kalibrierten Zoom wiederherstellen">🎯 Kal. Zoom</button>
+    <button id="btn-recalibrate" class="hidden" title="Kalibrierung neu starten">🔄 Neu Kal.</button>
     <div class="separator"></div>
     <label class="toolbar-label" title="Kontrast">
       🔆
@@ -38,9 +36,18 @@
     <span id="zoom-display" title="Zoom-Stufe">100%</span>
     <span id="scale-display" title="Kalibrierter Maßstab"></span>
   </div>
-  <div id="calibrate-banner" class="hidden">
-    🔧 Kalibrierung: Klicke <strong>2 Punkte</strong> mit bekanntem Abstand auf das Bild.
-    <button id="btn-calibrate-cancel">Abbrechen</button>
+  <div id="calibrate-banner-step1" class="calibrate-banner hidden">
+    🔧 <strong>Schritt 1 – Projektionsfläche:</strong> Verschiebe die gelbe 1-Meter-Linie (<strong>Maus ziehen</strong>) und zoome sie (<strong>Mausrad / +−</strong>), bis sie genau der echten 1-Meter-Markierung auf der Wand entspricht.
+    <button id="btn-cal-step1-ok">✅ Weiter</button>
+    <button id="btn-cal-cancel">Abbrechen</button>
+  </div>
+  <div id="calibrate-banner-step2" class="calibrate-banner hidden">
+    🔧 <strong>Schritt 2 – Bild kalibrieren:</strong> Klicke <strong>2 Punkte</strong> auf dem Bild. Punkte können per Drag verschoben werden. <strong>Shift</strong> = horizontal/vertikal einrasten.
+    <label style="margin-left:12px">Abstand:
+      <input type="number" id="input-calibrate-cm" value="10" min="0.1" step="0.1" style="width:60px;text-align:right;margin:0 4px"> cm
+    </label>
+    <button id="btn-cal-step2-ok" disabled>✅ Bestätigen</button>
+    <button id="btn-cal-cancel2">Abbrechen</button>
   </div>
   <div id="viewport">
     <canvas id="canvas-image"></canvas>
