@@ -29,6 +29,38 @@ Portable Electron-App zum Vorzeichnen mit einem Beamer. Bild laden, feingranular
 | Ctrl + O | Bild laden |
 | H / F1 | Hilfe anzeigen |
 
+## Projektstruktur
+
+```
+├── main.js                  # Electron Main Process (IPC, Fenster)
+├── preload.js               # Context Bridge (electronAPI)
+├── index.html               # UI-Markup
+├── styles.css               # Styling
+└── src/renderer/            # Renderer (ES6 Module)
+    ├── main.js              # Entry Point – initialisiert alle Module
+    ├── state.js             # Zentraler State (Single Source of Truth)
+    ├── constants.js         # Konstanten (Pan/Zoom-Steps, Radien, …)
+    ├── dom.js               # DOM-Element-Referenzen
+    ├── utils.js             # Hilfsfunktionen (Farbe, Koordinaten)
+    ├── canvas.js            # Canvas Resize
+    ├── persistence.js       # State speichern / laden
+    ├── calibration.js       # Kalibrierungs-Logik (2-Schritt)
+    ├── measurement.js       # Messwerkzeug
+    ├── settings.js          # Overlay-Einstellungen, Raster, Filter
+    ├── fullscreen.js        # Vollbild-Verwaltung
+    ├── contextMenu.js       # Rechtsklick-Kontextmenü
+    ├── render/
+    │   ├── index.js         # Render-Orchestrator
+    │   ├── image.js         # Bild-Rendering (Kontrast/Helligkeit)
+    │   ├── overlays.js      # Raster, Mitte, Drittel, Maßstab, Fadenkreuz
+    │   ├── calibrationOverlay.js  # Referenzlinie + Kalibrierpunkte
+    │   └── measureOverlay.js      # Messungen zeichnen
+    └── events/
+        ├── keyboard.js      # Tastatur-Handler
+        ├── mouse.js         # Maus-Handler (Pan, Zoom, Drag, …)
+        └── dragdrop.js      # Drag & Drop, Einfügen, Bild laden
+```
+
 ## Starten (Entwicklung)
 
 ```bash

@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "description": "Portable Foto-Anzeige zum Vorzeichnen mit Beamer",
   "author": "DFKI",
-  "main": "main.js",
+  "main": "src/main/main.js",
   "scripts": {
-    "start": "electron .",
-    "build:win": "electron-builder --win portable",
-    "build:mac": "electron-builder --mac dmg"
+    "bundle": "esbuild src/renderer/main.js --bundle --outfile=dist/renderer.js --format=iife --platform=browser",
+    "start": "npm run bundle && electron .",
+    "build:win": "npm run bundle && electron-builder --win portable",
+    "build:mac": "npm run bundle && electron-builder --mac dmg"
   },
   "build": {
     "appId": "com.beamer.tracer",
@@ -22,16 +23,14 @@
       "target": "dmg"
     },
     "files": [
-      "main.js",
-      "preload.js",
-      "index.html",
-      "renderer.js",
-      "styles.css",
+      "src/**/*",
+      "dist/renderer.js",
       "assets/**/*"
     ]
   },
   "devDependencies": {
     "electron": "^40.0.0",
-    "electron-builder": "^26.0.0"
+    "electron-builder": "^26.0.0",
+    "esbuild": "^0.27.3"
   }
 }

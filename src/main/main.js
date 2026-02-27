@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 
@@ -10,8 +10,8 @@ function getPortableDir() {
     // process.resourcesPath = …\resources → eine Ebene hoch = exe-Ordner
     return path.dirname(process.resourcesPath);
   }
-  // Dev-Modus: Projektordner
-  return __dirname;
+  // Dev-Modus: Projektordner (src/main → 2 Ebenen hoch)
+  return path.join(__dirname, '..', '..');
 }
 
 function getConfigPath() {
@@ -43,14 +43,33 @@ function createWindow() {
     height: 720,
     fullscreen: false,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, '..', 'preload', 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
 
-  win.loadFile('index.html');
+  win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
   win.setMenuBarVisibility(false);
+  // ── File Open Dialog ─────────────────────────────────────────
+  ipcMain.handle('dialog:openFile', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: 'Bild laden',
+      filters: [
+        { name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg'] },
+        { name: 'Alle Dateien', extensions: ['*'] },
+      ],
+      properties: ['openFile'],
+    });
+    if (canceled || filePaths.length === 0) return null;
+
+    const filePath = filePaths[0];
+    const ext = path.extname(filePath).toLowerCase().slice(1);
+    const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml' };
+    const mime = mimeMap[ext] || 'application/octet-stream';
+    const buffer = fs.readFileSync(filePath);
+    return `data:${mime};base64,${buffer.toString('base64')}`;
+  });
 
   // ── Fullscreen IPC ───────────────────────────────────────────
   ipcMain.handle('fullscreen:toggle', () => {
