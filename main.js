@@ -51,6 +51,25 @@ function createWindow() {
 
   win.loadFile('index.html');
   win.setMenuBarVisibility(false);
+
+  // ── Fullscreen IPC ───────────────────────────────────────────
+  ipcMain.handle('fullscreen:toggle', () => {
+    const isFS = win.isFullScreen();
+    win.setFullScreen(!isFS);
+    return !isFS;
+  });
+
+  ipcMain.handle('fullscreen:get', () => {
+    return win.isFullScreen();
+  });
+
+  // Notify renderer when fullscreen state changes (e.g. via OS controls)
+  win.on('enter-full-screen', () => {
+    win.webContents.send('fullscreen:changed', true);
+  });
+  win.on('leave-full-screen', () => {
+    win.webContents.send('fullscreen:changed', false);
+  });
 }
 
 app.whenReady().then(createWindow);

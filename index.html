@@ -23,6 +23,9 @@
     <button id="btn-ruler" title="Referenzmaß (R)">📏 Maßstab</button>
     <button id="btn-crosshair" class="active" title="Fadenkreuz ein/aus (X)">✚ Fadenkreuz</button>
     <div class="separator"></div>
+    <button id="btn-measure" title="Messwerkzeug (M)">📐 Messen</button>
+    <button id="btn-measure-clear" class="hidden" title="Alle Messungen löschen">🗑 Alle löschen</button>
+    <div class="separator"></div>
     <button id="btn-calibrate" title="Kalibrierung starten">🔧 Kalibrieren</button>
     <button id="btn-restore-zoom" class="hidden" title="Kalibrierten Zoom wiederherstellen">🎯 Kal. Zoom</button>
     <button id="btn-recalibrate" class="hidden" title="Kalibrierung neu starten">🔄 Neu Kal.</button>
@@ -41,6 +44,7 @@
     <span id="zoom-display" title="Zoom-Stufe">100%</span>
     <span id="scale-display" title="Kalibrierter Maßstab"></span>
     <button id="btn-settings" title="Overlay-Einstellungen">⚙️</button>
+    <button id="btn-fullscreen" title="Vollbild (F / F11)">⛶ Vollbild</button>
   </div>
 
   <!-- Overlay-Einstellungen Panel -->
@@ -117,6 +121,8 @@
     <button id="btn-cal-step2-ok" disabled>✅ Bestätigen</button>
     <button id="btn-cal-cancel2">Abbrechen</button>
   </div>
+  <!-- Fullscreen toolbar hover trigger zone -->
+  <div id="fullscreen-trigger"></div>
   <div id="viewport">
     <canvas id="canvas-image"></canvas>
     <canvas id="canvas-overlay"></canvas>
@@ -136,8 +142,11 @@
         <tr><td>T</td><td>Drittel</td></tr>
         <tr><td>R</td><td>Maßstab</td></tr>
         <tr><td>X</td><td>Fadenkreuz</td></tr>
+        <tr><td>M</td><td>Messwerkzeug</td></tr>
+        <tr><td>F / F11</td><td>Vollbild ein/aus</td></tr>
         <tr><td>0</td><td>Ansicht zurücksetzen</td></tr>
         <tr><td>Ctrl + O</td><td>Bild laden</td></tr>
+        <tr><td>Ctrl + V</td><td>Bild aus Zwischenablage einfügen</td></tr>
         <tr><td>H / F1</td><td>Diese Hilfe</td></tr>
       </table>
       <button id="btn-help-close">Schließen</button>

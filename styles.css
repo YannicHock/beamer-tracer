@@ -130,6 +130,16 @@ body {
 }
 #viewport.dragging { cursor: grabbing; }
 #viewport.calibrating { cursor: crosshair; }
+#viewport.measuring { cursor: crosshair; }
+
+#btn-measure-clear {
+  background: #8b0000 !important;
+  color: #fff !important;
+  border-color: #8b0000 !important;
+  font-size: 12px !important;
+  padding: 3px 8px !important;
+}
+#btn-measure-clear:hover { background: #b00000 !important; }
 
 #viewport canvas {
   position: absolute;
@@ -256,3 +266,53 @@ body {
   border-color: #0a84ff;
 }
 #btn-settings-close:hover { background: #2196ff; }
+
+/* ── Fullscreen Mode ───────────────────────────────────────── */
+
+/* Invisible trigger zone at top of screen – only active in fullscreen */
+#fullscreen-trigger {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 5px;
+  z-index: 150;
+}
+
+body.fullscreen #fullscreen-trigger {
+  display: block;
+}
+
+/* Toolbar: smooth slide in/out in fullscreen */
+body.fullscreen #toolbar {
+  transform: translateY(-100%);
+  transition: transform 0.3s ease;
+}
+
+body.fullscreen #toolbar.toolbar-visible {
+  transform: translateY(0);
+}
+
+/* Viewport fills the entire screen in fullscreen */
+body.fullscreen #viewport {
+  top: 0;
+}
+
+/* Calibrate banners also shift up in fullscreen (unless toolbar visible) */
+body.fullscreen .calibrate-banner {
+  top: 0;
+  transition: top 0.3s ease;
+}
+body.fullscreen #toolbar.toolbar-visible ~ .calibrate-banner {
+  top: 42px;
+}
+
+/* Fullscreen button styling */
+#btn-fullscreen {
+  margin-left: 4px;
+}
+body.fullscreen #btn-fullscreen {
+  background: #0a84ff !important;
+  color: #fff !important;
+  border-color: #0a84ff !important;
+}
+

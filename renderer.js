@@ -71,6 +71,13 @@ const CAL_POINT_RADIUS = 10;   // Klick-Radius zum Greifen eines Punktes
 // Legacy (für Ruler-Overlay)
 let calibration = { pxPerCm: null };
 
+// ── Messwerkzeug ─────────────────────────────────────────────
+let measureActive = false;           // Messmodus aktiv?
+let measurements = [];               // Array von { p1: {imgX, imgY}, p2: {imgX, imgY} | null }
+let measureCurrentIdx = -1;          // Index der aktuell gesetzten (unvollständigen) Messung
+let measureDragging = -1;            // -1=kein Drag, sonst Index*10+pointNr (0 oder 1)
+const MEASURE_POINT_RADIUS = 10;     // Klick-Radius
+
 // ── Hilfs-Funktion: Hex-Farbe + Opacity → rgba-String ────────
 function hexToRgba(hex, opacity) {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -211,6 +218,21 @@ document.body.addEventListener('drop', (e) => {
   e.preventDefault();
   const file = e.dataTransfer.files[0];
   if (file && file.type.startsWith('image/')) loadImageFile(file);
+});
+
+// Einfügen aus Zwischenablage (Ctrl+V)
+document.addEventListener('paste', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  const items = (e.clipboardData || {}).items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (file) loadImageFile(file);
+      return;
+    }
+  }
 });
 
 // Button
@@ -367,6 +389,9 @@ function renderOverlay() {
       ctxOvl.fillText(`P${i + 1}`, pt.x + 10, pt.y - 10);
     }
   }
+
+  // ── Messungen zeichnen ──
+  drawMeasurements();
 
   // ── Fadenkreuz-Overlay ──
   if (overlays.crosshair && crosshairMouseX >= 0 && crosshairMouseY >= 0) {
@@ -572,6 +597,84 @@ function drawRuler() {
   }
 }
 
+// ── Messungen zeichnen ───────────────────────────────────────
+function drawMeasurements() {
+  if (measurements.length === 0) return;
+
+  ctxOvl.save();
+
+  for (let mi = 0; mi < measurements.length; mi++) {
+    const m = measurements[mi];
+    const sp1 = imgToScreen(m.p1.imgX, m.p1.imgY);
+
+    if (m.p2) {
+      const sp2 = imgToScreen(m.p2.imgX, m.p2.imgY);
+
+      // Verbindungslinie
+      ctxOvl.strokeStyle = 'rgba(0, 200, 255, 0.85)';
+      ctxOvl.lineWidth = 2;
+      ctxOvl.setLineDash([]);
+      ctxOvl.beginPath();
+      ctxOvl.moveTo(sp1.x, sp1.y);
+      ctxOvl.lineTo(sp2.x, sp2.y);
+      ctxOvl.stroke();
+
+      // Abstand berechnen (Bild-Pixel)
+      const dxImg = m.p2.imgX - m.p1.imgX;
+      const dyImg = m.p2.imgY - m.p1.imgY;
+      const distImgPx = Math.sqrt(dxImg * dxImg + dyImg * dyImg);
+
+      // Label erstellen
+      let label = `${Math.round(distImgPx)} px`;
+      if (calibration.pxPerCm && calibration.pxPerCm > 0) {
+        const distCm = distImgPx / calibration.pxPerCm;
+        label += `  (${distCm.toFixed(1)} cm)`;
+      }
+
+      // Label-Position: Mitte der Linie, leicht versetzt
+      const midX = (sp1.x + sp2.x) / 2;
+      const midY = (sp1.y + sp2.y) / 2;
+
+      // Hintergrund für Label
+      ctxOvl.font = 'bold 13px monospace';
+      const tm = ctxOvl.measureText(label);
+      const textW = tm.width + 10;
+      const textH = 20;
+      ctxOvl.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      ctxOvl.fillRect(midX - textW / 2, midY - textH - 4, textW, textH);
+
+      // Label-Text
+      ctxOvl.fillStyle = 'rgba(0, 220, 255, 0.95)';
+      ctxOvl.textAlign = 'center';
+      ctxOvl.fillText(label, midX, midY - 8);
+      ctxOvl.textAlign = 'left';
+
+      // Punkt 2
+      drawMeasurePoint(sp2.x, sp2.y);
+    }
+
+    // Punkt 1
+    drawMeasurePoint(sp1.x, sp1.y);
+  }
+
+  ctxOvl.restore();
+}
+
+function drawMeasurePoint(x, y) {
+  // Äußerer Ring
+  ctxOvl.strokeStyle = 'rgba(0, 200, 255, 0.9)';
+  ctxOvl.lineWidth = 2;
+  ctxOvl.beginPath();
+  ctxOvl.arc(x, y, 7, 0, Math.PI * 2);
+  ctxOvl.stroke();
+
+  // Innerer Punkt
+  ctxOvl.fillStyle = 'rgba(0, 220, 255, 0.95)';
+  ctxOvl.beginPath();
+  ctxOvl.arc(x, y, 4, 0, Math.PI * 2);
+  ctxOvl.fill();
+}
+
 // ── Fadenkreuz zeichnen ──────────────────────────────────────
 function drawCrosshair(w, h) {
   const mx = crosshairMouseX;
@@ -692,6 +795,64 @@ viewport.addEventListener('wheel', (e) => {
 
 // ── Maus-Drag ────────────────────────────────────────────────
 viewport.addEventListener('mousedown', (e) => {
+  // ── Messwerkzeug ──
+  if (measureActive && calibrateStep === 0) {
+    const rect = viewport.getBoundingClientRect();
+    const mx   = e.clientX - rect.left;
+    const my   = e.clientY - rect.top;
+
+    // Mittlere Maustaste → Pan erlauben
+    if (e.button === 1) {
+      dragging   = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      panStartX  = panX;
+      panStartY  = panY;
+      viewport.classList.add('dragging');
+      e.preventDefault();
+      return;
+    }
+
+    // Prüfe ob ein existierender Messpunkt getroffen wurde
+    let hitMeasure = -1;  // encoded: measureIdx * 10 + pointNr (0 or 1)
+    for (let mi = 0; mi < measurements.length; mi++) {
+      const m = measurements[mi];
+      const sp1 = imgToScreen(m.p1.imgX, m.p1.imgY);
+      const d1 = Math.sqrt((sp1.x - mx) ** 2 + (sp1.y - my) ** 2);
+      if (d1 <= MEASURE_POINT_RADIUS) { hitMeasure = mi * 10 + 0; break; }
+      if (m.p2) {
+        const sp2 = imgToScreen(m.p2.imgX, m.p2.imgY);
+        const d2 = Math.sqrt((sp2.x - mx) ** 2 + (sp2.y - my) ** 2);
+        if (d2 <= MEASURE_POINT_RADIUS) { hitMeasure = mi * 10 + 1; break; }
+      }
+    }
+
+    if (hitMeasure >= 0) {
+      // Punkt greifen zum Verschieben
+      measureDragging = hitMeasure;
+      viewport.classList.add('dragging');
+      e.preventDefault();
+      return;
+    }
+
+    // Neuen Punkt setzen
+    const imgPt = screenToImg(mx, my);
+    if (measureCurrentIdx >= 0 && measurements[measureCurrentIdx] && !measurements[measureCurrentIdx].p2) {
+      // Zweiten Punkt der aktuellen Messung setzen
+      measurements[measureCurrentIdx].p2 = { imgX: imgPt.x, imgY: imgPt.y };
+      measureCurrentIdx = -1;
+      updateMeasureClearButton();
+      render();
+    } else {
+      // Neue Messung starten (erster Punkt)
+      measurements.push({ p1: { imgX: imgPt.x, imgY: imgPt.y }, p2: null });
+      measureCurrentIdx = measurements.length - 1;
+      render();
+    }
+    e.preventDefault();
+    return;
+  }
+
   if (calibrateStep === 2) {
     const rect = viewport.getBoundingClientRect();
     const mx   = e.clientX - rect.left;
@@ -790,6 +951,22 @@ viewport.addEventListener('mousedown', (e) => {
 });
 
 window.addEventListener('mousemove', (e) => {
+  // Drag eines Messpunktes
+  if (measureDragging >= 0) {
+    const rect = viewport.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const imgPt = screenToImg(mx, my);
+    const mi = Math.floor(measureDragging / 10);
+    const pi = measureDragging % 10;
+    if (measurements[mi]) {
+      const pt = pi === 0 ? measurements[mi].p1 : measurements[mi].p2;
+      if (pt) { pt.imgX = imgPt.x; pt.imgY = imgPt.y; }
+    }
+    render();
+    return;
+  }
+
   // Drag eines Kalibrierpunkts (Schritt 2)
   if (calPointDragging >= 0 && calibrateStep === 2) {
     const rect = viewport.getBoundingClientRect();
@@ -829,6 +1006,12 @@ window.addEventListener('mousemove', (e) => {
 });
 
 window.addEventListener('mouseup', () => {
+  if (measureDragging >= 0) {
+    measureDragging = -1;
+    viewport.classList.remove('dragging');
+    render();
+    return;
+  }
   if (calPointDragging >= 0) {
     calPointDragging = -1;
     viewport.classList.remove('dragging');
@@ -934,6 +1117,16 @@ document.addEventListener('keydown', (e) => {
     case 't': case 'T': toggleOverlay('thirds',  'btn-thirds');  break;
     case 'r': case 'R': toggleOverlay('ruler',   'btn-ruler');   break;
     case 'x': case 'X': toggleOverlay('crosshair', 'btn-crosshair'); break;
+    case 'm': case 'M': toggleMeasureMode(); break;
+    case 'f': case 'F':
+      if (!e.ctrlKey && !e.metaKey) { toggleFullscreen(); break; }
+      handled = false; break;
+    case 'F11': toggleFullscreen(); break;
+    case 'Escape':
+      if (isFullscreen) { toggleFullscreen(); break; }
+      if (measureActive) { deactivateMeasureMode(); break; }
+      handled = false;
+      break;
     case 'h': case 'H': case 'F1':
       document.getElementById('help-overlay').classList.toggle('hidden');
       break;
@@ -1068,6 +1261,7 @@ function updateCalibrationButtons() {
 // ── Schritt 1 starten ────────────────────────────────────────
 function startCalibration() {
   if (!img) return;
+  if (measureActive) deactivateMeasureMode();
   calibrateStep = 1;
   calibratePoints = [];
 
@@ -1242,6 +1436,119 @@ for (const key of OVERLAY_KEYS) {
     saveState();
   });
 }
+
+// ══════════════════════════════════════════════════════════════
+//  MESSWERKZEUG
+// ══════════════════════════════════════════════════════════════
+
+function toggleMeasureMode() {
+  if (measureActive) {
+    deactivateMeasureMode();
+  } else {
+    activateMeasureMode();
+  }
+}
+
+function activateMeasureMode() {
+  if (calibrateStep !== 0) return;  // nicht während Kalibrierung
+  measureActive = true;
+  measureCurrentIdx = -1;
+  document.getElementById('btn-measure').classList.add('active');
+  viewport.classList.add('measuring');
+  updateMeasureClearButton();
+  render();
+}
+
+function deactivateMeasureMode() {
+  measureActive = false;
+  // Entferne unvollständige Messung (nur 1 Punkt)
+  if (measureCurrentIdx >= 0 && measurements[measureCurrentIdx] && !measurements[measureCurrentIdx].p2) {
+    measurements.splice(measureCurrentIdx, 1);
+  }
+  measureCurrentIdx = -1;
+  measureDragging = -1;
+  document.getElementById('btn-measure').classList.remove('active');
+  viewport.classList.remove('measuring');
+  updateMeasureClearButton();
+  render();
+}
+
+function clearAllMeasurements() {
+  measurements = [];
+  measureCurrentIdx = -1;
+  measureDragging = -1;
+  updateMeasureClearButton();
+  render();
+}
+
+function updateMeasureClearButton() {
+  const btn = document.getElementById('btn-measure-clear');
+  if (measurements.length > 0) {
+    btn.classList.remove('hidden');
+  } else {
+    btn.classList.add('hidden');
+  }
+}
+
+document.getElementById('btn-measure').addEventListener('click', toggleMeasureMode);
+document.getElementById('btn-measure-clear').addEventListener('click', clearAllMeasurements);
+
+// ══════════════════════════════════════════════════════════════
+//  FULLSCREEN
+// ══════════════════════════════════════════════════════════════
+
+let isFullscreen = false;
+let fullscreenToolbarTimeout = null;
+
+async function toggleFullscreen() {
+  if (window.electronAPI && window.electronAPI.toggleFullscreen) {
+    const newState = await window.electronAPI.toggleFullscreen();
+    applyFullscreenUI(newState);
+  }
+}
+
+function applyFullscreenUI(fs) {
+  isFullscreen = fs;
+  if (fs) {
+    document.body.classList.add('fullscreen');
+  } else {
+    document.body.classList.remove('fullscreen');
+    toolbar.classList.remove('toolbar-visible');
+  }
+  // Resize canvases after layout change
+  setTimeout(resizeCanvases, 50);
+}
+
+// Show toolbar when mouse enters the top 5px zone in fullscreen
+const toolbar = document.getElementById('toolbar');
+const fullscreenTrigger = document.getElementById('fullscreen-trigger');
+
+fullscreenTrigger.addEventListener('mouseenter', () => {
+  if (!isFullscreen) return;
+  toolbar.classList.add('toolbar-visible');
+  clearTimeout(fullscreenToolbarTimeout);
+});
+
+toolbar.addEventListener('mouseenter', () => {
+  if (!isFullscreen) return;
+  clearTimeout(fullscreenToolbarTimeout);
+});
+
+toolbar.addEventListener('mouseleave', () => {
+  if (!isFullscreen) return;
+  fullscreenToolbarTimeout = setTimeout(() => {
+    toolbar.classList.remove('toolbar-visible');
+  }, 400);
+});
+
+// Listen for external fullscreen changes (e.g. OS-level)
+if (window.electronAPI && window.electronAPI.onFullscreenChanged) {
+  window.electronAPI.onFullscreenChanged((fs) => {
+    applyFullscreenUI(fs);
+  });
+}
+
+document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
 
 // ── Init ─────────────────────────────────────────────────────
 resizeCanvases();
