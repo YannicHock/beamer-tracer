@@ -1,13 +1,33 @@
-// ============================================================
-//  Beamer Tracer – Calibration Overlay Drawing
-// ============================================================
+/**
+ * @module renderer/features/calibration/calibrationOverlay
+ * @description Canvas-Zeichnung für die Kalibrierungs-UI.
+ *
+ * Enthält zwei Draw-Funktionen:
+ * - `drawReferenceLine()` – Gelbe 1-Meter-Referenzlinie mit Teilstrichen (Schritt 1)
+ * - `drawCalibrationPoints()` – Kalibrierpunkte mit Verbindungslinie und Abstandsanzeige (Schritt 2)
+ *
+ * Wird vom Render-Orchestrator (`render/index.js`) aufgerufen, wenn
+ * `state.calibrateStep` 1 oder 2 ist.
+ */
 
 import state from '../../core/state.js';
 import { ctxOvl } from '../../core/dom.js';
 import { REF_BASE_PX, CAL_POINT_RADIUS } from '../../core/constants.js';
 import { imgToScreen } from '../../core/utils.js';
 
-// ── Reference Line (Step 1) ──────────────────────────────────
+/**
+ * Zeichnet die 1-Meter-Referenzlinie für Kalibrierung Schritt 1.
+ *
+ * Bestandteile:
+ * - Gelbe horizontale Hauptlinie (3px, mit Schatten)
+ * - End-Ticks an beiden Enden (14px)
+ * - 10-cm-Teilstriche (halbe/volle Größe für 5cm/andere)
+ * - Label „← 1 Meter →" oberhalb der Linie
+ * - Zoom-Info unterhalb (Linien-Zoom in % und px-Länge)
+ *
+ * Position und Größe werden aus `state.refLineX`, `state.refLineY`
+ * und `state.refLineZoom` berechnet.
+ */
 export function drawReferenceLine() {
   const lineW = REF_BASE_PX * state.refLineZoom;
   const x1 = state.refLineX - lineW / 2;
@@ -55,13 +75,25 @@ export function drawReferenceLine() {
   ctxOvl.fillStyle = 'rgba(255,255,0,0.7)';
   ctxOvl.fillText(
     `Linien-Zoom: ${Math.round(state.refLineZoom * 100)}%  |  ${Math.round(lineW)} px`,
+
     state.refLineX, y + tickH + 20,
   );
 
   ctxOvl.restore();
 }
 
-// ── Calibration Points (Step 2) ──────────────────────────────
+/**
+ * Zeichnet die Kalibrierpunkte und deren Verbindungslinie für Schritt 2.
+ *
+ * Bestandteile:
+ * - Kalibrierpunkte (orange Kreise, gelb wenn ausgewählt)
+ * - Labels P1 / P2
+ * - Gestrichelte Hilfslinie + solide Verbindungslinie (bei 2 Punkten)
+ * - Pixel-Abstand als Label an der Linienmitte
+ *
+ * Punkte werden in Bild-Koordinaten gespeichert und hier in
+ * Screen-Koordinaten umgerechnet (via `imgToScreen()`).
+ */
 export function drawCalibrationPoints() {
   if (state.calibratePoints.length === 0) return;
 
@@ -125,4 +157,3 @@ export function drawCalibrationPoints() {
     ctxOvl.fillText(`P${i + 1}`, pt.x + 10, pt.y - 10);
   }
 }
-

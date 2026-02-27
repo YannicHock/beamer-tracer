@@ -1,6 +1,32 @@
-// ============================================================
-//  Beamer Tracer – Calibration Logic
-// ============================================================
+/**
+ * @module renderer/features/calibration/calibration
+ * @description 2-Schritt-Kalibrierungs-Logik.
+ *
+ * Ermöglicht die Umrechnung von Bild-Pixeln in reale Zentimeter
+ * durch einen zweistufigen Kalibrierungsprozess:
+ *
+ * **Schritt 1 – Projektionsfläche:**
+ * Eine gelbe 1-Meter-Referenzlinie wird angezeigt. Der Benutzer verschiebt
+ * und skaliert sie, bis sie genau 1 Meter auf der echten Wand abdeckt.
+ * Ergebnis: `state.screenPxPerMeter` (Screen-Pixel pro Meter)
+ *
+ * **Schritt 2 – Bild kalibrieren:**
+ * Der Benutzer klickt 2 Punkte im Bild mit bekanntem Abstand.
+ * Ergebnis: `state.calibration.pxPerCm` (Bild-Pixel pro Zentimeter)
+ * + automatische Zoom-Anpassung, sodass das Bild maßstabsgetreu projiziert wird.
+ *
+ * **State-Übergänge:**
+ * ```
+ * calibrateStep: 0 → startCalibration() → 1
+ *                1 → finishStep1()      → 2
+ *                2 → applyCalibrationStep2() oder cancelCalibration() → 0
+ * ```
+ *
+ * **Hinweis:** Verwendet dynamischen Import für `measurement.js`, um zirkuläre
+ * Abhängigkeiten zu vermeiden.
+ *
+ * @see {@link module:renderer/features/calibration/calibrationOverlay} für die Canvas-Zeichnung
+ */
 
 import state from '../../core/state.js';
 import { canvasImage, canvasOverlay, viewport } from '../../core/dom.js';
@@ -9,7 +35,12 @@ import { render } from '../../render/index.js';
 import { saveState } from '../../services/persistence.js';
 import { updateGridInputVisibility } from '../settings/settings.js';
 
-// ── UI Helpers ───────────────────────────────────────────────
+/**
+ * Aktualisiert die Sichtbarkeit der Kalibrierungs-Buttons in der Toolbar.
+ *
+ * Zeigt „🎯 Zoom" und „🔄 Neu" nur an, wenn eine Kalibrierung vorhanden ist
+ * (`state.calibratedZoom !== null`).
+ */
 export function updateCalibrationButtons() {
   const restoreBtn = document.getElementById('btn-restore-zoom');
   const recalBtn   = document.getElementById('btn-recalibrate');
@@ -22,10 +53,18 @@ export function updateCalibrationButtons() {
   }
 }
 
-// ── Step 1: Start ────────────────────────────────────────────
+/**
+ * Startet die Kalibrierung (Schritt 1: Referenzlinie).
+ *
+ * Deaktiviert einen eventuell aktiven Messmodus (dynamischer Import),
+ * zeigt die Referenzlinie in der Mitte des Canvas an und blendet
+ * das Banner für Schritt 1 ein.
+ *
+ * Voraussetzung: Ein Bild muss geladen sein (`state.img !== null`).
+ */
 export function startCalibration() {
   if (!state.img) return;
-  // Deactivate measurement if active (imported dynamically to avoid circular)
+  // Deaktiviert einen eventuell aktiven Messmodus (dynamischer Import)
   if (state.measureActive) {
     import('../measurement/measurement.js').then(m => m.deactivateMeasureMode());
   }
@@ -43,7 +82,14 @@ export function startCalibration() {
   render();
 }
 
-// ── Step 1: Finish ───────────────────────────────────────────
+/**
+ * Schließt Schritt 1 ab und wechselt zu Schritt 2.
+ *
+ * Berechnet `state.screenPxPerMeter` aus der Referenzlinien-Länge:
+ * `screenPxPerMeter = REF_BASE_PX × refLineZoom`
+ *
+ * Setzt den Kalibrierungsmodus auf Schritt 2 (Punkte setzen).
+ */
 export function finishStep1() {
   state.screenPxPerMeter = REF_BASE_PX * state.refLineZoom;
 
@@ -59,7 +105,10 @@ export function finishStep1() {
   render();
 }
 
-// ── Cancel ───────────────────────────────────────────────────
+/**
+ * Bricht die Kalibrierung ab und setzt alle Kalibrierungs-State-Werte zurück.
+ * Entfernt CSS-Klassen und Banner.
+ */
 export function cancelCalibration() {
   state.calibrateStep = 0;
   state.calibratePoints = [];
@@ -74,7 +123,19 @@ export function cancelCalibration() {
   render();
 }
 
-// ── Step 2: Apply ────────────────────────────────────────────
+/**
+ * Wendet die Kalibrierung aus Schritt 2 an.
+ *
+ * Berechnung:
+ * 1. Abstand der 2 Punkte in Bild-Pixeln: `distImgPx`
+ * 2. Bekannter Abstand in cm: `knownCm` (aus Input-Feld)
+ * 3. `pxPerCm = distImgPx / knownCm`
+ * 4. Benötigter Screen-Pixel-Abstand: `targetScreenPx = knownCm × screenPxPerCm`
+ * 5. Neuer Zoom: `newZoom = targetScreenPx / distImgPx`
+ * 6. Pan so anpassen, dass die Mitte der 2 Punkte im Viewport zentriert ist
+ *
+ * Speichert kalibrierten Zoom + Pan für spätere Wiederherstellung.
+ */
 export function applyCalibrationStep2() {
   if (state.calibrateStep !== 2 || state.calibratePoints.length !== 2) return;
 
@@ -111,7 +172,19 @@ export function applyCalibrationStep2() {
   cancelCalibration();
 }
 
-// ── Event Listener Init ──────────────────────────────────────
+/**
+ * Registriert Event-Listener für alle Kalibrierungs-Buttons.
+ *
+ * Buttons:
+ * - `btn-calibrate`: Startet Kalibrierung
+ * - `btn-cal-cancel` / `btn-cal-cancel2`: Bricht ab
+ * - `btn-cal-step1-ok`: Bestätigt Schritt 1
+ * - `btn-cal-step2-ok`: Bestätigt Schritt 2
+ * - `btn-restore-zoom`: Stellt kalibrierten Zoom/Pan wieder her
+ * - `btn-recalibrate`: Setzt Kalibrierung zurück und startet neu
+ *
+ * Muss einmalig beim App-Start aufgerufen werden.
+ */
 export function initCalibration() {
   document.getElementById('btn-calibrate').addEventListener('click', startCalibration);
   document.getElementById('btn-cal-cancel').addEventListener('click', cancelCalibration);
@@ -141,4 +214,3 @@ export function initCalibration() {
     startCalibration();
   });
 }
-

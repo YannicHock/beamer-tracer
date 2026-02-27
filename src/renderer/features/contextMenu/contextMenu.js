@@ -1,6 +1,16 @@
-// ============================================================
-//  Beamer Tracer – Context Menu
-// ============================================================
+/**
+ * @module renderer/features/contextMenu/contextMenu
+ * @description Benutzerdefiniertes Rechtsklick-Kontextmenü.
+ *
+ * Ersetzt das Standard-Browser-Kontextmenü im Viewport durch ein
+ * eigenes Menü mit Schnellzugriff auf alle wichtigen Funktionen.
+ *
+ * Features:
+ * - Position wird an Fensterrändern angepasst (verhindert Abschneiden)
+ * - Checkmarks zeigen den Ein/Aus-Status der Overlays an
+ * - Klick außerhalb oder ESC schließt das Menü
+ * - Menüpunkte: Bild laden, Overlays, Ansicht zurücksetzen, Kalibrieren, Hilfe, Tour
+ */
 
 import state from '../../core/state.js';
 import { canvasImage, viewport, contextMenu } from '../../core/dom.js';
@@ -9,6 +19,12 @@ import { saveState } from '../../services/persistence.js';
 import { toggleOverlay } from '../overlays/overlays.js';
 import { startCalibration } from '../calibration/calibration.js';
 
+/**
+ * Aktualisiert die Checkmark-Anzeigen im Kontextmenü.
+ * Setzt die CSS-Klasse `active` auf die Checkmark-Elemente
+ * basierend auf dem aktuellen Overlay-Status.
+ * @private
+ */
 function updateContextMenuChecks() {
   const checks = {
     grid:   state.overlays.grid,
@@ -22,6 +38,16 @@ function updateContextMenuChecks() {
   }
 }
 
+/**
+ * Zeigt das Kontextmenü an der gegebenen Position an.
+ *
+ * Passt die Position an, falls das Menü am rechten oder unteren
+ * Fensterrand abgeschnitten würde.
+ *
+ * @param {number} x - X-Position (clientX des Rechtsklicks)
+ * @param {number} y - Y-Position (clientY des Rechtsklicks)
+ * @private
+ */
 function showContextMenu(x, y) {
   updateContextMenuChecks();
   contextMenu.classList.remove('hidden');
@@ -40,10 +66,24 @@ function showContextMenu(x, y) {
   contextMenu.style.top  = `${y}px`;
 }
 
+/**
+ * Versteckt das Kontextmenü.
+ * @private
+ */
 function hideContextMenu() {
   contextMenu.classList.add('hidden');
 }
 
+/**
+ * Registriert alle Event-Listener für das Kontextmenü.
+ *
+ * - `contextmenu`-Event auf dem Viewport (Rechtsklick)
+ * - Click-Handler auf Menüitems (delegiert via `data-action`)
+ * - Click-Outside-to-close auf dem gesamten Dokument
+ * - ESC-Taste zum Schließen (Capture-Phase, verhindert Propagation)
+ *
+ * Muss einmalig beim App-Start aufgerufen werden.
+ */
 export function initContextMenu() {
   // Right-click → show context menu
   viewport.addEventListener('contextmenu', (e) => {
@@ -115,4 +155,3 @@ export function initContextMenu() {
     }
   }, true);
 }
-

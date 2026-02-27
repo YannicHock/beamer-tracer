@@ -1,11 +1,39 @@
-// ============================================================
-//  Beamer Tracer – Onboarding Tour
-// ============================================================
+/**
+ * @module renderer/features/tour/tour
+ * @description Interaktive Onboarding-Einführungstour.
+ *
+ * Zeigt eine schrittweise Einführung in alle Toolbar-Elemente der App.
+ * Jeder Schritt hebt ein UI-Element hervor (Spotlight via `clip-path`)
+ * und zeigt einen Tooltip mit Erklärung an.
+ *
+ * Features:
+ * - 13 Schritte (alle Toolbar-Elemente + Viewport-Navigation)
+ * - Spotlight-Effekt mit Backdrop-Cutout
+ * - Tooltip-Positionierung (unter oder über dem Ziel, automatisch)
+ * - Navigation: Weiter/Zurück/Überspringen (Buttons + Pfeiltasten + ESC)
+ * - Fortschrittsbalken
+ * - Automatischer Start beim ersten Besuch (via localStorage-Flag)
+ * - Beendet Vollbild und schließt offene Modals vor Start
+ *
+ * Tour-Zustand wird intern verwaltet (nicht im zentralen State),
+ * da er nicht persistiert werden muss.
+ */
 
 import state from '../../core/state.js';
 import { applyFullscreenUI } from '../fullscreen/fullscreen.js';
 
-// ── Tour Step Definitions ────────────────────────────────────
+/**
+ * Definition aller Tour-Schritte.
+ * Jeder Schritt hat:
+ * - `target` – CSS-Selektor des hervorzuhebenden Elements
+ * - `title` – Überschrift im Tooltip
+ * - `text` – HTML-Beschreibung im Tooltip
+ * - `position` (optional) – 'center' für zentrierte Darstellung ohne Spotlight
+ * - `padX` (optional) – Zusätzliches horizontales Padding für den Spotlight
+ *
+ * @type {Array<{target: string, title: string, text: string, position?: string, padX?: number}>}
+ * @private
+ */
 const TOUR_STEPS = [
   {
     target: '#btn-load',
@@ -77,14 +105,26 @@ const TOUR_STEPS = [
 ];
 
 // ── Tour State ───────────────────────────────────────────────
+/** @type {number} Aktueller Schritt-Index (-1 = nicht aktiv) @private */
 let currentStep = -1;
+/** @type {HTMLDivElement|null} Backdrop-Element mit Spotlight-Cutout @private */
 let backdropEl = null;
+/** @type {HTMLDivElement|null} Tooltip-Element @private */
 let tooltipEl = null;
+/** @type {Function|null} Window-Resize-Handler (für Neupositionierung) @private */
 let resizeHandler = null;
+/** @type {boolean} Ist die Tour gerade aktiv? @private */
 let isActive = false;
 
 // ── Public API ───────────────────────────────────────────────
 
+/**
+ * Startet die Einführungstour.
+ *
+ * Verlässt den Vollbildmodus (falls aktiv), schließt offene Modals,
+ * erstellt Backdrop + Tooltip und zeigt den ersten Schritt an.
+ * Registriert einen Resize-Handler zur Neupositionierung.
+ */
 export function startTour() {
   // Exit fullscreen first so toolbar targets are visible
   if (state.isFullscreen) {
@@ -104,6 +144,11 @@ export function startTour() {
   window.addEventListener('resize', resizeHandler);
 }
 
+/**
+ * Beendet die Tour und räumt alle DOM-Elemente auf.
+ * Setzt `beamer-tracer-tour-done` in localStorage, um
+ * den Auto-Start bei zukünftigen Besuchen zu verhindern.
+ */
 export function endTour() {
   isActive = false;
   currentStep = -1;
@@ -119,12 +164,21 @@ export function endTour() {
   } catch (_) { /* ignore */ }
 }
 
+/**
+ * Gibt zurück, ob die Tour gerade aktiv ist.
+ * @returns {boolean}
+ */
 export function isTourActive() {
   return isActive;
 }
 
 // ── Internals ────────────────────────────────────────────────
 
+/**
+ * Erstellt das halbtransparente Backdrop-Element mit Spotlight-Cutout.
+ * Klick auf den Backdrop (außerhalb des Tooltips) beendet die Tour.
+ * @private
+ */
 function createBackdrop() {
   if (backdropEl) backdropEl.remove();
   backdropEl = document.createElement('div');
@@ -136,6 +190,10 @@ function createBackdrop() {
   document.body.appendChild(backdropEl);
 }
 
+/**
+ * Erstellt das Tooltip-DOM-Element.
+ * @private
+ */
 function createTooltip() {
   if (tooltipEl) tooltipEl.remove();
   tooltipEl = document.createElement('div');
@@ -143,6 +201,18 @@ function createTooltip() {
   document.body.appendChild(tooltipEl);
 }
 
+/**
+ * Zeigt den aktuellen Tour-Schritt an.
+ *
+ * Ablauf:
+ * 1. Spotlight-Cutout auf das Ziel-Element setzen (via `clip-path` Polygon)
+ * 2. Tooltip-Inhalt rendern (Titel, Text, Navigation, Fortschrittsbalken)
+ * 3. Event-Listener für Weiter/Zurück/Überspringen binden
+ * 4. Tooltip positionieren
+ *
+ * Falls `currentStep` außerhalb des gültigen Bereichs liegt, wird die Tour beendet.
+ * @private
+ */
 function showStep() {
   if (currentStep < 0 || currentStep >= TOUR_STEPS.length) {
     endTour();
@@ -262,6 +332,11 @@ function positionTooltip(targetEl, step) {
 }
 
 // ── Keyboard Navigation ──────────────────────────────────────
+// Registriert globalen Keydown-Handler (Capture-Phase):
+// - ESC: Tour beenden
+// - Pfeil rechts / Enter: Nächster Schritt
+// - Pfeil links: Vorheriger Schritt
+// stopImmediatePropagation verhindert, dass andere Handler die Tasten verarbeiten.
 document.addEventListener('keydown', (e) => {
   if (!isActive) return;
   if (e.key === 'Escape') {
@@ -281,7 +356,11 @@ document.addEventListener('keydown', (e) => {
   }
 }, true);
 
-// ── Auto-start on first visit ────────────────────────────────
+/**
+ * Startet die Tour automatisch beim ersten Besuch.
+ * Prüft `localStorage.getItem('beamer-tracer-tour-done')`.
+ * Wartet 600ms nach dem Laden, bevor die Tour startet.
+ */
 export function maybeAutoStartTour() {
   try {
     if (!localStorage.getItem('beamer-tracer-tour-done')) {
@@ -290,7 +369,10 @@ export function maybeAutoStartTour() {
   } catch (_) { /* ignore */ }
 }
 
-// ── Init ─────────────────────────────────────────────────────
+/**
+ * Registriert den Tour-Button im Hilfe-Dialog und den Auto-Start.
+ * Muss einmalig beim App-Start aufgerufen werden.
+ */
 export function initTour() {
   // Button in help overlay
   const btnTourFromHelp = document.getElementById('btn-tour-start');
@@ -301,4 +383,3 @@ export function initTour() {
   // Auto-start for first-time users
   maybeAutoStartTour();
 }
-

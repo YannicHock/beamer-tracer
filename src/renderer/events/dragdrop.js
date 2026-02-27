@@ -1,12 +1,36 @@
-// ============================================================
-//  Beamer Tracer – Drag & Drop / Paste / Load Image
-// ============================================================
+/**
+ * @module renderer/events/dragdrop
+ * @description Bild-Laden via Drag & Drop, Zwischenablage und Datei-Dialog.
+ *
+ * Bietet drei Wege zum Laden eines Bildes:
+ * 1. **Datei-Dialog** – Über den „📂 Bild"-Button oder Ctrl+O
+ *    (nativer Electron-Dialog via `electronAPI.openFile()`)
+ * 2. **Drag & Drop** – Datei auf das Fenster ziehen
+ * 3. **Zwischenablage** – Ctrl+V (Bild aus Clipboard einfügen)
+ *
+ * Alle Bilder werden intern als **Data-URL** (Base64) verarbeitet und
+ * im zentralen State als `state.imgSrc` gespeichert (für Persistierung).
+ *
+ * Nach dem Laden wird das Bild auf Zoom 1.0 gesetzt und zentriert.
+ *
+ * Fallback: Ohne `electronAPI` (z.B. im Browser) wird ein verstecktes
+ * `<input type="file">` verwendet statt des nativen Dialogs.
+ */
 
 import state from '../core/state.js';
 import { canvasImage } from '../core/dom.js';
 import { render } from '../render/index.js';
 import { saveState } from '../services/persistence.js';
 
+/**
+ * Lädt ein Bild aus einer Data-URL und zeigt es an.
+ *
+ * Setzt `state.imgSrc` und erstellt ein neues `Image()`-Objekt.
+ * Bei `onload`: Setzt Zoom auf 1.0, zentriert das Bild im Viewport,
+ * ruft `render()` und `saveState()` auf.
+ *
+ * @param {string} dataUrl - Bild als Data-URL (z.B. 'data:image/png;base64,...')
+ */
 export function loadImageFromDataURL(dataUrl) {
   state.imgSrc = dataUrl;
   state.img = new Image();
@@ -20,12 +44,29 @@ export function loadImageFromDataURL(dataUrl) {
   state.img.src = state.imgSrc;
 }
 
+/**
+ * Liest eine Bild-Datei (File-Objekt) und lädt sie via Data-URL.
+ *
+ * Verwendet `FileReader.readAsDataURL()` und delegiert an
+ * `loadImageFromDataURL()` nach dem Lesen.
+ *
+ * @param {File} file - Ein File-Objekt (aus Drag & Drop, Clipboard oder Input)
+ */
 export function loadImageFile(file) {
   const reader = new FileReader();
   reader.onload = (e) => loadImageFromDataURL(e.target.result);
   reader.readAsDataURL(file);
 }
 
+/**
+ * Registriert alle Event-Listener für Bild-Laden.
+ *
+ * - `dragover` / `drop` auf `document.body` (Drag & Drop)
+ * - `paste` auf `document` (Zwischenablage, ignoriert Input-Felder)
+ * - Click-Handler auf `btn-load` (Electron-Dialog oder Fallback-Input)
+ *
+ * Muss einmalig beim App-Start aufgerufen werden.
+ */
 export function initDragDrop() {
   // Drag & Drop
   document.body.addEventListener('dragover', (e) => e.preventDefault());
@@ -65,4 +106,3 @@ export function initDragDrop() {
     input.click();
   });
 }
-

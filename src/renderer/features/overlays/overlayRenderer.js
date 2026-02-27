@@ -1,12 +1,38 @@
-// ============================================================
-//  Beamer Tracer – Overlay Drawing (Grid, Center, Thirds, Ruler, Crosshair)
-// ============================================================
+/**
+ * @module renderer/features/overlays/overlayRenderer
+ * @description Canvas-Zeichenfunktionen für alle Standard-Overlays.
+ *
+ * Enthält die Zeichenlogik für Raster (Grid), Mittellinien (Center),
+ * Drittel-Linien (Thirds), Maßstab (Ruler) und Fadenkreuz (Crosshair).
+ *
+ * Alle Funktionen zeichnen auf den Overlay-Canvas (`canvas-overlay` / `ctxOvl`).
+ * Sie werden vom Render-Orchestrator (`render/index.js`) aufgerufen.
+ *
+ * Overlay-Stile (Farbe, Deckkraft, Linienstärke) werden aus `state.overlayStyles` gelesen.
+ */
 
 import state from '../../core/state.js';
 import { canvasOverlay, ctxOvl, scaleDisplay } from '../../core/dom.js';
 import { hexToRgba } from '../../core/utils.js';
 
-// ── Grid ─────────────────────────────────────────────────────
+/**
+ * Zeichnet ein gleichmäßiges Raster (Gitter) über den sichtbaren Bildbereich.
+ *
+ * Verhalten je nach Kalibrierungsstatus:
+ * - **Unkalibriert:** Rasterweite = `state.gridSize` Bild-Pixel × Zoom
+ * - **Kalibriert:** Rasterweite = `state.gridSizeCm` × `pxPerCm` × Zoom, mit cm-Labels
+ *
+ * Performance-Optimierung: Es werden nur Linien im sichtbaren Bildbereich gezeichnet.
+ * Falls die Schrittweite < 5 Screen-Pixel beträgt, wird das Raster nicht gezeichnet
+ * (zu dicht, würde die Darstellung unlesbar machen).
+ *
+ * @param {number} w - Canvas-Breite in Pixel
+ * @param {number} h - Canvas-Höhe in Pixel
+ * @param {number} imgX0 - Linke Kante des Bildes in Screen-Koordinaten
+ * @param {number} imgY0 - Obere Kante des Bildes in Screen-Koordinaten
+ * @param {number} imgW - Breite des Bildes in Screen-Pixeln (Bild-Breite × Zoom)
+ * @param {number} imgH - Höhe des Bildes in Screen-Pixeln (Bild-Höhe × Zoom)
+ */
 export function drawGrid(w, h, imgX0, imgY0, imgW, imgH) {
   const hasCal = state.calibration.pxPerCm != null && state.calibration.pxPerCm > 0;
 
@@ -98,7 +124,16 @@ export function drawGrid(w, h, imgX0, imgY0, imgW, imgH) {
   ctxOvl.restore();
 }
 
-// ── Center Lines ─────────────────────────────────────────────
+/**
+ * Zeichnet horizontale und vertikale Mittellinien durch die Bildmitte.
+ *
+ * Nützlich zum Zentrieren des Bildes auf der Projektionsfläche.
+ *
+ * @param {number} imgX0 - Linke Kante des Bildes in Screen-Koordinaten
+ * @param {number} imgY0 - Obere Kante des Bildes in Screen-Koordinaten
+ * @param {number} imgW - Breite des Bildes in Screen-Pixeln
+ * @param {number} imgH - Höhe des Bildes in Screen-Pixeln
+ */
 export function drawCenter(imgX0, imgY0, imgW, imgH) {
   const cs = state.overlayStyles.center;
   ctxOvl.strokeStyle = hexToRgba(cs.color, cs.opacity);
@@ -111,7 +146,17 @@ export function drawCenter(imgX0, imgY0, imgW, imgH) {
   ctxOvl.stroke();
 }
 
-// ── Thirds Lines ─────────────────────────────────────────────
+/**
+ * Zeichnet gestrichelte Drittel-Linien (Rule of Thirds) über das Bild.
+ *
+ * Erzeugt 2 vertikale und 2 horizontale gestrichelte Linien,
+ * die das Bild in ein 3×3-Raster unterteilen.
+ *
+ * @param {number} imgX0 - Linke Kante des Bildes in Screen-Koordinaten
+ * @param {number} imgY0 - Obere Kante des Bildes in Screen-Koordinaten
+ * @param {number} imgW - Breite des Bildes in Screen-Pixeln
+ * @param {number} imgH - Höhe des Bildes in Screen-Pixeln
+ */
 export function drawThirds(imgX0, imgY0, imgW, imgH) {
   const ts = state.overlayStyles.thirds;
   ctxOvl.strokeStyle = hexToRgba(ts.color, ts.opacity);
@@ -128,7 +173,14 @@ export function drawThirds(imgX0, imgY0, imgW, imgH) {
   ctxOvl.setLineDash([]);
 }
 
-// ── Ruler ────────────────────────────────────────────────────
+/**
+ * Zeichnet eine Maßstab-Referenzlinie am unteren linken Bildschirmrand.
+ *
+ * Verhalten je nach Kalibrierungsstatus:
+ * - **Kalibriert:** Zeigt eine 10-cm-Referenz mit cm-Teilstrichen und
+ *   aktualisiert die Maßstab-Anzeige in der Toolbar (`📏 X.X px/cm`)
+ * - **Unkalibriert:** Zeigt eine 200px-Referenz mit Hinweis „nicht kalibriert"
+ */
 export function drawRuler() {
   const h = canvasOverlay.height;
   const startX = 20;
@@ -170,7 +222,21 @@ export function drawRuler() {
   }
 }
 
-// ── Crosshair ────────────────────────────────────────────────
+/**
+ * Zeichnet ein Fadenkreuz an der aktuellen Mausposition.
+ *
+ * Das Fadenkreuz besteht aus einer horizontalen und einer vertikalen
+ * gestrichelten Linie, die sich am Mauszeiger kreuzen.
+ *
+ * Zusätzlich wird ein Koordinaten-Label angezeigt:
+ * - Bild-Pixel-Koordinaten (x, y px)
+ * - Falls kalibriert: zusätzlich cm-Werte (x, y cm)
+ * - Label-Position wird automatisch angepasst, wenn es an den Rand stößt
+ * - Text ist weiß innerhalb des Bildes, grau außerhalb
+ *
+ * @param {number} w - Canvas-Breite in Pixel
+ * @param {number} h - Canvas-Höhe in Pixel
+ */
 export function drawCrosshair(w, h) {
   const mx = state.crosshairMouseX;
   const my = state.crosshairMouseY;
@@ -229,4 +295,3 @@ export function drawCrosshair(w, h) {
 
   ctxOvl.restore();
 }
-

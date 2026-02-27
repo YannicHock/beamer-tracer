@@ -1,6 +1,24 @@
-// ============================================================
-//  Beamer Tracer – Keyboard Events
-// ============================================================
+/**
+ * @module renderer/events/keyboard
+ * @description Tastatur-Event-Handler.
+ *
+ * Registriert den globalen `keydown`-Listener und verarbeitet alle
+ * Tastenkürzel der Anwendung. Das Verhalten ist kontextabhängig:
+ *
+ * **Normalmodus:** Pan (Pfeiltasten), Zoom (+/−), Overlay-Toggles (G/C/T/R/X),
+ * Messmodus (M), Vollbild (F/F11), Hilfe (H/F1), Bild laden (Ctrl+O),
+ * Ansicht zurücksetzen (0)
+ *
+ * **Kalibrierung Schritt 1:** Referenzlinie verschieben (Pfeiltasten),
+ * Referenzlinie skalieren (+/−), Abbrechen (ESC)
+ *
+ * **Kalibrierung Schritt 2:** Zoom/Pan (durchfallend), Punkte löschen
+ * (Delete/Backspace), Bestätigen (Enter), Abbrechen (ESC)
+ *
+ * Eingaben in `<input>`-Feldern werden ignoriert (`e.target.tagName === 'INPUT'`).
+ *
+ * @see {@link module:renderer/events/mouse} für Maus-Events
+ */
 
 import state from '../core/state.js';
 import { canvasImage } from '../core/dom.js';
@@ -14,6 +32,21 @@ import { toggleOverlay } from '../features/overlays/overlays.js';
 import { zoomAtPoint } from './mouse.js';
 
 // ── Init ─────────────────────────────────────────────────────
+/**
+ * Registriert den globalen Tastatur-Handler und die Hilfe-Buttons.
+ *
+ * Der Handler unterscheidet zwischen drei Modi:
+ * 1. Kalibrierung Schritt 1 (Referenzlinie steuern)
+ * 2. Kalibrierung Schritt 2 (Punkte verwalten, Zoom/Pan)
+ * 3. Normaler Modus (alle Shortcuts)
+ *
+ * Modifier-Tasten:
+ * - Shift → Fein-Pan (1px)
+ * - Ctrl → Grob-Pan (50px)
+ * - Alt + Pfeiltasten → Zoom
+ *
+ * Muss einmalig beim App-Start aufgerufen werden.
+ */
 export function initKeyboard() {
   // Help buttons
   document.getElementById('btn-help').addEventListener('click', () => {
@@ -140,4 +173,3 @@ export function initKeyboard() {
     }
   });
 }
-

@@ -1,4 +1,50 @@
 <!DOCTYPE html>
+<!--
+  ============================================================
+  Beamer Tracer – HTML Markup
+  ============================================================
+
+  Dieses HTML-Dokument definiert die gesamte UI-Struktur der Anwendung.
+  Es gibt kein dynamisches HTML-Rendering – alle Elemente sind statisch
+  definiert und werden per JavaScript ein-/ausgeblendet (CSS-Klasse 'hidden').
+
+  Aufbau (von oben nach unten):
+  ─────────────────────────────────────────────────────────────
+  1. #toolbar                    – Fixierte Toolbar am oberen Rand
+     ├── Bild laden (#btn-load)
+     ├── Overlay-Buttons (#btn-grid, #btn-center, #btn-thirds, #btn-ruler, #btn-crosshair)
+     ├── Rasterweite-Inputs (#input-grid-size, #input-grid-size-cm)
+     ├── Messwerkzeug (#btn-measure, #btn-measure-clear)
+     ├── Kalibrierung (#btn-calibrate, #btn-restore-zoom, #btn-recalibrate)
+     ├── Filter-Slider (#slider-contrast, #slider-brightness)
+     ├── Info-Displays (#zoom-display, #scale-display)
+     └── Settings/Hilfe/Vollbild (#btn-settings, #btn-help, #btn-fullscreen)
+
+  2. #settings-overlay           – Modal: Overlay-Einstellungen (Farbe/Deckkraft/Dicke)
+  3. #calibrate-banner-step1     – Gelbes Banner: Kalibrierung Schritt 1
+  4. #calibrate-banner-step2     – Gelbes Banner: Kalibrierung Schritt 2
+  5. #fullscreen-trigger         – Unsichtbare Hover-Zone für Toolbar im Vollbild
+  6. #viewport                   – Canvas-Container
+     ├── #canvas-image           – Untere Schicht: Bild-Rendering
+     └── #canvas-overlay         – Obere Schicht: Overlays, Hilfslinien, UI
+  7. #help-overlay               – Modal: Tastenbelegung + Tour-Button
+  8. #context-menu               – Rechtsklick-Kontextmenü
+
+  Script-Einbindung:
+  ─────────────────────────────────────────────────────────────
+  Das gebündelte Renderer-Script (dist/renderer.js) wird am Ende des
+  <body> geladen. Es wird von esbuild aus src/renderer/main.js erzeugt.
+
+  ID-Konventionen:
+  ─────────────────────────────────────────────────────────────
+  - btn-*      → Buttons (btn-load, btn-grid, btn-calibrate, ...)
+  - slider-*   → Range-Inputs (slider-contrast, slider-brightness)
+  - input-*    → Nummerische Inputs (input-grid-size, input-calibrate-cm)
+  - style-*    → Settings-Panel Inputs (style-grid-color, style-grid-opacity, ...)
+  - *-display  → Nur-Lese Anzeigen (zoom-display, scale-display, ...)
+  - *-overlay  → Modale Overlays (help-overlay, settings-overlay)
+  - ctx-check-*→ Checkmarks im Kontextmenü (ctx-check-grid, ...)
+-->
 <html lang="de">
 <head>
   <meta charset="UTF-8">
@@ -6,6 +52,7 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- ── Toolbar ─────────────────────────────────────────────── -->
   <div id="toolbar">
     <button id="btn-load" title="Bild laden (Ctrl+O)">📂 Bild</button>
     <div class="separator"></div>
@@ -109,6 +156,7 @@
       <button id="btn-settings-close">Schließen</button>
     </div>
   </div>
+  <!-- ── Kalibrierungs-Banner (über dem Viewport) ──────────── -->
   <div id="calibrate-banner-step1" class="calibrate-banner hidden">
     🔧 <strong>Schritt 1 – Projektionsfläche:</strong> Verschiebe die gelbe 1-Meter-Linie (<strong>Maus ziehen</strong>) und zoome sie (<strong>Mausrad / +−</strong>), bis sie genau der echten 1-Meter-Markierung auf der Wand entspricht.
     <button id="btn-cal-step1-ok">✅ Weiter</button>
@@ -122,12 +170,17 @@
     <button id="btn-cal-step2-ok" disabled>✅ Bestätigen</button>
     <button id="btn-cal-cancel2">Abbrechen</button>
   </div>
-  <!-- Fullscreen toolbar hover trigger zone -->
+  <!-- ── Vollbild: unsichtbare Hover-Zone am oberen Rand ──── -->
+  <!-- Bei mouseenter wird die Toolbar im Vollbild-Modus sichtbar -->
   <div id="fullscreen-trigger"></div>
+
+  <!-- ── Viewport: Canvas-Container ──────────────────────────── -->
+  <!-- Enthält zwei übereinander liegende Canvas-Elemente -->
   <div id="viewport">
     <canvas id="canvas-image"></canvas>
     <canvas id="canvas-overlay"></canvas>
   </div>
+  <!-- ── Hilfe-Modal ─────────────────────────────────────────── -->
   <div id="help-overlay" class="hidden">
     <div class="help-box">
       <h2>⌨️ Tastenbelegung</h2>
@@ -156,7 +209,8 @@
       <button id="btn-help-close">Schließen</button>
     </div>
   </div>
-  <!-- Custom Context Menu -->
+  <!-- ── Kontextmenü (Rechtsklick) ──────────────────────────── -->
+  <!-- data-action wird von contextMenu.js ausgewertet -->
   <div id="context-menu" class="context-menu hidden">
     <div class="context-menu-item" data-action="load">📂 Bild laden</div>
     <div class="context-menu-item" data-action="grid"><span class="ctx-check" id="ctx-check-grid"></span>📐 Raster an/aus</div>
@@ -171,6 +225,7 @@
     <div class="context-menu-item" data-action="tour">🎓 Einführungstour</div>
   </div>
 
+  <!-- ── Gebündeltes Renderer-Script (erzeugt via esbuild) ─── -->
   <script src="../../dist/renderer.js"></script>
 </body>
 </html>

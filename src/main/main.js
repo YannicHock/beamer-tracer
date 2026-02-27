@@ -1,9 +1,38 @@
+/**
+ * @module main
+ * @description Electron Main Process für Beamer Tracer.
+ *
+ * Verantwortlichkeiten:
+ * - Erstellt das BrowserWindow mit Sicherheits-Einstellungen (contextIsolation, kein nodeIntegration)
+ * - Registriert IPC-Handler für Datei-I/O (Konfiguration lesen/schreiben, Bild laden)
+ * - Verwaltet den Vollbild-Modus und benachrichtigt den Renderer bei Zustandsänderungen
+ * - Ermittelt den portablen Konfigurations-Pfad (neben der EXE oder im Projektordner)
+ *
+ * IPC-Kanäle:
+ * - `config:read`       → Liest die portable JSON-Konfigurationsdatei
+ * - `config:write`      → Schreibt State-Daten in die portable JSON-Datei
+ * - `dialog:openFile`   → Öffnet nativen Datei-Dialog, gibt Bild als Data-URL zurück
+ * - `fullscreen:toggle` → Schaltet Vollbild um, gibt neuen Status zurück
+ * - `fullscreen:get`    → Gibt aktuellen Vollbild-Status zurück
+ * - `fullscreen:changed`→ Wird an den Renderer gesendet bei Vollbild-Änderung durch das OS
+ */
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 
 // ── Persistente Konfigurationsdatei neben der Executable ─────
 // Portable: alles relativ zum Ausführungsordner (z.B. USB-Stick)
+
+/**
+ * Ermittelt das Basisverzeichnis für portable Dateien.
+ *
+ * - Im gepackten Zustand: Der Ordner, in dem die EXE liegt
+ *   (eine Ebene über `process.resourcesPath`)
+ * - Im Dev-Modus: Das Projekt-Stammverzeichnis
+ *   (zwei Ebenen über `src/main/`)
+ *
+ * @returns {string} Absoluter Pfad zum portablen Verzeichnis
+ */
 function getPortableDir() {
   if (app.isPackaged) {
     // Gepackt: exe liegt z.B. in D:\stick\BeamerTracer.exe
@@ -14,10 +43,15 @@ function getPortableDir() {
   return path.join(__dirname, '..', '..');
 }
 
+/**
+ * Gibt den vollständigen Pfad zur portablen Konfigurationsdatei zurück.
+ * @returns {string} Absoluter Pfad zu `beamer-tracer-config.json`
+ */
 function getConfigPath() {
   return path.join(getPortableDir(), 'beamer-tracer-config.json');
 }
 
+// ── IPC: Konfiguration lesen ─────────────────────────────────
 ipcMain.handle('config:read', () => {
   try {
     const raw = fs.readFileSync(getConfigPath(), 'utf-8');
@@ -27,6 +61,7 @@ ipcMain.handle('config:read', () => {
   }
 });
 
+// ── IPC: Konfiguration schreiben ─────────────────────────────
 ipcMain.handle('config:write', (_event, data) => {
   try {
     fs.writeFileSync(getConfigPath(), JSON.stringify(data, null, 2), 'utf-8');
@@ -37,6 +72,16 @@ ipcMain.handle('config:write', (_event, data) => {
 });
 
 // ── Fenster ──────────────────────────────────────────────────
+
+/**
+ * Erstellt das Hauptfenster der Anwendung und registriert
+ * fenster-spezifische IPC-Handler (Datei-Dialog, Vollbild).
+ *
+ * Sicherheits-Einstellungen:
+ * - `contextIsolation: true` → Renderer hat keinen Zugriff auf Node.js
+ * - `nodeIntegration: false`  → Kein `require()` im Renderer
+ * - Preload-Script exponiert nur die benötigten APIs via Context Bridge
+ */
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,

@@ -1,6 +1,17 @@
-// ============================================================
-//  Beamer Tracer – Persistence (Save / Restore)
-// ============================================================
+/**
+ * @module renderer/services/persistence
+ * @description Persistenz-Service – Speichern und Laden des Anwendungs-States.
+ *
+ * Verwendet eine duale Persistenz-Strategie:
+ * 1. **localStorage** – Schneller Cache im Browser-Speicher
+ * 2. **Portable JSON-Datei** – Persistente Datei neben der EXE (via `electronAPI`)
+ *
+ * Gespeicherte Daten umfassen: Viewport (Zoom, Pan), Filter (Kontrast, Helligkeit),
+ * Raster-Einstellungen, Overlay-Styles, Kalibrierungs-Daten und das geladene Bild
+ * als Base64-Data-URL.
+ *
+ * @see {@link module:main} für die Datei-I/O-Implementierung im Main Process
+ */
 
 import state from '../core/state.js';
 import { contrastDisp, brightnessDisp } from '../core/dom.js';
@@ -8,6 +19,18 @@ import { render } from '../render/index.js';
 import { updateCalibrationButtons } from '../features/calibration/calibration.js';
 import { updateGridInputVisibility } from '../features/settings/settings.js';
 
+/**
+ * Speichert den aktuellen Anwendungs-State in beide Persistenz-Schichten.
+ *
+ * **localStorage:** Sofortiger Schreibzugriff, überlebt Tab-Schließungen,
+ * aber nicht Deinstallation oder Browserwechsel.
+ *
+ * **Portable Datei:** Schreibt via `electronAPI.writeConfig()` eine JSON-Datei
+ * neben die EXE. Ermöglicht USB-Stick-Portabilität.
+ *
+ * **Achtung:** Das Bild wird als Base64-Data-URL gespeichert. Bei großen
+ * Bildern kann die Konfigurationsdatei mehrere MB groß werden.
+ */
 export function saveState() {
   const data = {
     zoom: state.zoom,
@@ -37,6 +60,20 @@ export function saveState() {
   }
 }
 
+/**
+ * Stellt den Anwendungs-State aus der Persistenz wieder her.
+ *
+ * Lade-Reihenfolge:
+ * 1. Versuche portable JSON-Datei via `electronAPI.readConfig()`
+ * 2. Fallback: localStorage-Cache
+ * 3. Kein gespeicherter State → keine Aktion
+ *
+ * Stellt alle State-Werte wieder her, synchronisiert die UI-Elemente
+ * (Slider, Inputs) und lädt das Bild asynchron (wenn vorhanden).
+ *
+ * @async
+ * @returns {Promise<void>}
+ */
 export async function restoreState() {
   try {
     let saved = null;
@@ -92,4 +129,3 @@ export async function restoreState() {
     render();
   } catch (_) { /* ignore */ }
 }
-

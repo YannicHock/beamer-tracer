@@ -1,6 +1,34 @@
-// ============================================================
-//  Beamer Tracer – Mouse Events (Pan, Zoom, Drag, Calibration, Measurement)
-// ============================================================
+/**
+ * @module renderer/events/mouse
+ * @description Maus-Event-Handler (Pan, Zoom, Kalibrierung, Messung).
+ *
+ * Verwaltet alle mausbasierten Interaktionen im Viewport.
+ * Das Verhalten hängt vom aktuellen Modus ab:
+ *
+ * **Normalmodus:**
+ * - Mausrad → Zoom zum Cursor (`zoomAtPoint`)
+ * - Links-/Mittelklick + Drag → Bild-Pan
+ * - Mausbewegung → Fadenkreuz-Position aktualisieren
+ *
+ * **Messmodus (`state.measureActive`):**
+ * - Linksklick → Messpunkt setzen (P1 → P2)
+ * - Drag auf existierenden Punkt → Punkt verschieben
+ * - Mittelklick → Pan (auch im Messmodus)
+ *
+ * **Kalibrierung Schritt 1:**
+ * - Linksklick + Drag → Referenzlinie verschieben
+ * - Mausrad → Referenzlinie skalieren
+ *
+ * **Kalibrierung Schritt 2:**
+ * - Linksklick → Kalibrierpunkt setzen (max 2) oder Drag auf Punkt
+ * - Shift → Horizontal/vertikal einrasten (Punkt-Snapping)
+ * - Mittelklick → Pan
+ *
+ * Mouseup und Mousemove sind global auf `window` registriert,
+ * damit Drag-Operationen auch außerhalb des Viewports funktionieren.
+ *
+ * @see {@link module:renderer/events/keyboard} für Tastatur-Events
+ */
 
 import state from '../core/state.js';
 import { viewport } from '../core/dom.js';
@@ -10,7 +38,20 @@ import { render, renderOverlay } from '../render/index.js';
 import { saveState } from '../services/persistence.js';
 import { updateMeasureClearButton } from '../features/measurement/measurement.js';
 
-// ── Zoom at Point ────────────────────────────────────────────
+/**
+ * Zoomt zur angegebenen Bildschirmposition.
+ *
+ * Algorithmus (Zoom-to-Point):
+ * 1. Bild-Koordinaten unter dem Cursor berechnen
+ * 2. Neuen Zoom-Faktor setzen (Minimum: 0.01)
+ * 3. Pan so anpassen, dass derselbe Bildpunkt unter dem Cursor bleibt
+ *
+ * Löst `render()` und `saveState()` aus.
+ *
+ * @param {number} mouseX - X-Position in Screen-Pixeln (relativ zum Viewport)
+ * @param {number} mouseY - Y-Position in Screen-Pixeln (relativ zum Viewport)
+ * @param {number} zoomDelta - Zoom-Änderung (positiv = reinzoomen, negativ = rauszoomen)
+ */
 export function zoomAtPoint(mouseX, mouseY, zoomDelta) {
   const imgXBefore = (mouseX - state.panX) / state.zoom;
   const imgYBefore = (mouseY - state.panY) / state.zoom;
@@ -24,7 +65,21 @@ export function zoomAtPoint(mouseX, mouseY, zoomDelta) {
   saveState();
 }
 
-// ── Init ─────────────────────────────────────────────────────
+/**
+ * Registriert alle Maus-Event-Listener.
+ *
+ * Events auf dem Viewport:
+ * - `mousemove` → Fadenkreuz-Position aktualisieren
+ * - `mouseleave` → Fadenkreuz ausblenden
+ * - `wheel` → Zoom (Mausrad) oder Referenzlinien-Zoom (Kalibrierung)
+ * - `mousedown` → Modus-abhängige Aktionen (Pan, Messung, Kalibrierung)
+ *
+ * Globale Events (auf `window`):
+ * - `mousemove` → Drag-Operationen (Pan, Punkt-Drag, Referenzlinien-Drag)
+ * - `mouseup` → Drag beenden
+ *
+ * Muss einmalig beim App-Start aufgerufen werden.
+ */
 export function initMouse() {
   // ── Crosshair tracking ──
   viewport.addEventListener('mousemove', (e) => {
@@ -263,7 +318,15 @@ export function initMouse() {
   });
 }
 
-// ── Helper ───────────────────────────────────────────────────
+/**
+ * Startet einen Bild-Pan-Drag.
+ *
+ * Speichert die Start-Position der Maus und die aktuelle Pan-Position,
+ * setzt den Cursor auf `grabbing` und verhindert Standardverhalten.
+ *
+ * @param {MouseEvent} e - Das auslösende Mousedown-Event
+ * @private
+ */
 function startPanDrag(e) {
   state.dragging   = true;
   state.dragStartX = e.clientX;
@@ -273,4 +336,3 @@ function startPanDrag(e) {
   viewport.classList.add('dragging');
   e.preventDefault();
 }
-

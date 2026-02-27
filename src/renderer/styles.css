@@ -1,3 +1,43 @@
+/*
+ * ============================================================
+ *  Beamer Tracer – Stylesheet
+ * ============================================================
+ *
+ * Vollständiges Styling für die Beamer Tracer Anwendung.
+ *
+ * Struktur (Abschnitte):
+ * ─────────────────────────────────────────────────────────────
+ * 1. Reset & Base         – CSS-Reset, CSS-Variablen (:root), Body
+ * 2. Toolbar              – Fixierte Toolbar oben, Buttons, Separators
+ * 3. Toolbar Inputs       – Nummerische Eingabefelder, Slider, Labels
+ * 4. Info Displays        – Zoom-Anzeige, Maßstab-Anzeige
+ * 5. Special Buttons      – Kalibrier-Buttons, Mess-Buttons
+ * 6. Calibrate Banner     – Gelbes Banner während der Kalibrierung
+ * 7. Viewport             – Canvas-Container, Cursor-States
+ * 8. Modal Overlays       – Hilfe-Dialog, Settings-Panel
+ * 9. Settings Box         – Overlay-Einstellungen (Farbe, Deckkraft, Dicke)
+ * 10. Context Menu        – Benutzerdefiniertes Rechtsklick-Menü
+ * 11. Fullscreen           – Toolbar-Ausblendung, Trigger-Zone
+ * 12. Tour                 – Onboarding-Tour (Backdrop, Tooltip, Buttons)
+ *
+ * CSS-Variablen (Custom Properties):
+ * ─────────────────────────────────────────────────────────────
+ * --bg-*         → Hintergrundfarben (primary, surface, elevated, button)
+ * --border-*     → Rahmenfarben (subtle, medium, accent)
+ * --text-*       → Textfarben (primary, secondary, tertiary)
+ * --accent       → Akzentfarbe (Blau #3884ff)
+ * --danger       → Fehler/Lösch-Farbe (Rot)
+ * --success      → Erfolgs-Farbe (Grün)
+ * --warning      → Warn-Farbe (Orange)
+ * --calib-yellow → Kalibrierungs-Farbe (Gelb)
+ * --radius-*     → Border-Radius-Stufen (sm=6px, md=10px, lg=16px)
+ * --shadow-*     → Box-Shadow-Stufen (sm, md, lg)
+ * --transition-* → Transitions-Dauern (fast=0.15s, normal=0.25s)
+ * --toolbar-h    → Toolbar-Höhe (46px)
+ * --font-main    → Haupt-Schriftart (Segoe UI / System-Font)
+ * --font-mono    → Monospace-Schriftart (Cascadia Code / Consolas)
+ */
+
 /* ── Reset & Base ──────────────────────────────────────────── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 

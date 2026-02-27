@@ -1,11 +1,30 @@
-// ============================================================
-//  Beamer Tracer – Measurement Overlay Drawing
-// ============================================================
+/**
+ * @module renderer/features/measurement/measureOverlay
+ * @description Canvas-Zeichnung für Messungen.
+ *
+ * Zeichnet alle Messlinien, Messpunkte und Abstands-Labels auf den
+ * Overlay-Canvas. Wird vom Render-Orchestrator aufgerufen.
+ *
+ * Darstellung:
+ * - Cyan-farbene Verbindungslinien zwischen Messpunkten
+ * - Kreisförmige Punkte (Doppelkreis: äußerer Stroke + innerer Fill)
+ * - Abstandslabel mit schwarzem Hintergrund (Pixel + optional cm)
+ *
+ * Alle Punkt-Koordinaten werden zur Laufzeit von Bild-Koordinaten
+ * in Screen-Koordinaten umgerechnet (via `imgToScreen()`).
+ */
 
 import state from '../../core/state.js';
 import { ctxOvl } from '../../core/dom.js';
 import { imgToScreen } from '../../core/utils.js';
 
+/**
+ * Zeichnet einen einzelnen Messpunkt (Doppelkreis) an der gegebenen Screen-Position.
+ *
+ * @param {number} x - X-Position in Screen-Pixeln
+ * @param {number} y - Y-Position in Screen-Pixeln
+ * @private
+ */
 function drawMeasurePoint(x, y) {
   ctxOvl.strokeStyle = 'rgba(0, 200, 255, 0.9)';
   ctxOvl.lineWidth = 2;
@@ -19,6 +38,16 @@ function drawMeasurePoint(x, y) {
   ctxOvl.fill();
 }
 
+/**
+ * Zeichnet alle Messungen aus `state.measurements` auf den Overlay-Canvas.
+ *
+ * Für jede abgeschlossene Messung (p1 und p2 vorhanden):
+ * - Verbindungslinie (cyan, 2px)
+ * - Abstand in Pixel + optional cm (falls kalibriert)
+ * - Label mit schwarzem Hintergrund für Lesbarkeit
+ *
+ * Für laufende Messungen (nur p1): Nur den ersten Punkt zeichnen.
+ */
 export function drawMeasurements() {
   if (state.measurements.length === 0) return;
 
@@ -76,4 +105,3 @@ export function drawMeasurements() {
 
   ctxOvl.restore();
 }
-
