@@ -1357,7 +1357,10 @@ function applyCalibrationStep2() {
   cancelCalibration();
 }
 
-// ── Hilfe schließen ──────────────────────────────────────────
+// ── Hilfe öffnen / schließen ──────────────────────────────────
+document.getElementById('btn-help').addEventListener('click', () => {
+  document.getElementById('help-overlay').classList.toggle('hidden');
+});
 document.getElementById('btn-help-close').addEventListener('click', () => {
   document.getElementById('help-overlay').classList.add('hidden');
 });
@@ -1549,6 +1552,115 @@ if (window.electronAPI && window.electronAPI.onFullscreenChanged) {
 }
 
 document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
+
+// ══════════════════════════════════════════════════════════════
+//  CUSTOM CONTEXT MENU
+// ══════════════════════════════════════════════════════════════
+
+const contextMenu = document.getElementById('context-menu');
+
+function updateContextMenuChecks() {
+  const checks = {
+    grid:   overlays.grid,
+    center: overlays.center,
+    thirds: overlays.thirds,
+    ruler:  overlays.ruler,
+  };
+  for (const [key, active] of Object.entries(checks)) {
+    const el = document.getElementById(`ctx-check-${key}`);
+    if (el) el.classList.toggle('active', active);
+  }
+}
+
+function showContextMenu(x, y) {
+  updateContextMenuChecks();
+  contextMenu.classList.remove('hidden');
+
+  // Position berechnen – sicherstellen, dass Menü im Viewport bleibt
+  const menuW = contextMenu.offsetWidth;
+  const menuH = contextMenu.offsetHeight;
+  const winW  = window.innerWidth;
+  const winH  = window.innerHeight;
+
+  if (x + menuW > winW) x = winW - menuW - 4;
+  if (y + menuH > winH) y = winH - menuH - 4;
+  if (x < 0) x = 4;
+  if (y < 0) y = 4;
+
+  contextMenu.style.left = `${x}px`;
+  contextMenu.style.top  = `${y}px`;
+}
+
+function hideContextMenu() {
+  contextMenu.classList.add('hidden');
+}
+
+// Rechtsklick auf Viewport → Kontextmenü zeigen
+viewport.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  showContextMenu(e.clientX, e.clientY);
+});
+
+// Klick auf Menü-Eintrag
+contextMenu.addEventListener('click', (e) => {
+  const item = e.target.closest('.context-menu-item');
+  if (!item) return;
+
+  const action = item.dataset.action;
+  hideContextMenu();
+
+  switch (action) {
+    case 'load':
+      document.getElementById('btn-load').click();
+      break;
+    case 'grid':
+      toggleOverlay('grid', 'btn-grid');
+      render();
+      break;
+    case 'center':
+      toggleOverlay('center', 'btn-center');
+      render();
+      break;
+    case 'thirds':
+      toggleOverlay('thirds', 'btn-thirds');
+      render();
+      break;
+    case 'ruler':
+      toggleOverlay('ruler', 'btn-ruler');
+      render();
+      break;
+    case 'reset':
+      if (img) {
+        zoom = 1.0;
+        panX = (canvasImage.width  - img.width)  / 2;
+        panY = (canvasImage.height - img.height) / 2;
+        render();
+        saveState();
+      }
+      break;
+    case 'calibrate':
+      startCalibration();
+      break;
+    case 'help':
+      document.getElementById('help-overlay').classList.toggle('hidden');
+      break;
+  }
+});
+
+// Klick irgendwo anders → Menü schließen
+document.addEventListener('click', (e) => {
+  if (!contextMenu.contains(e.target)) {
+    hideContextMenu();
+  }
+});
+
+// ESC → Menü schließen
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !contextMenu.classList.contains('hidden')) {
+    hideContextMenu();
+    e.stopImmediatePropagation();
+  }
+}, true);  // capture phase, damit es vor dem normalen keydown greift
 
 // ── Init ─────────────────────────────────────────────────────
 resizeCanvases();

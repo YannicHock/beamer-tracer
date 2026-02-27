@@ -44,6 +44,7 @@
     <span id="zoom-display" title="Zoom-Stufe">100%</span>
     <span id="scale-display" title="Kalibrierter Maßstab"></span>
     <button id="btn-settings" title="Overlay-Einstellungen">⚙️</button>
+    <button id="btn-help" title="Hilfe (H / F1)">❓ Hilfe</button>
     <button id="btn-fullscreen" title="Vollbild (F / F11)">⛶ Vollbild</button>
   </div>
 
@@ -152,6 +153,20 @@
       <button id="btn-help-close">Schließen</button>
     </div>
   </div>
+  <!-- Custom Context Menu -->
+  <div id="context-menu" class="context-menu hidden">
+    <div class="context-menu-item" data-action="load">📂 Bild laden</div>
+    <div class="context-menu-item" data-action="grid"><span class="ctx-check" id="ctx-check-grid"></span>📐 Raster an/aus</div>
+    <div class="context-menu-item" data-action="center"><span class="ctx-check" id="ctx-check-center"></span>✛ Mitte an/aus</div>
+    <div class="context-menu-item" data-action="thirds"><span class="ctx-check" id="ctx-check-thirds"></span>▦ Drittel an/aus</div>
+    <div class="context-menu-item" data-action="ruler"><span class="ctx-check" id="ctx-check-ruler"></span>📏 Maßstab an/aus</div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" data-action="reset">↩️ Ansicht zurücksetzen</div>
+    <div class="context-menu-item" data-action="calibrate">🔧 Kalibrieren</div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" data-action="help">❓ Hilfe</div>
+  </div>
+
   <script src="renderer.js"></script>
 </body>
 </html>
